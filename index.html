@@ -139,6 +139,24 @@ const observer=new MutationObserver(()=>{if(document.getElementById('creator').c
 document.getElementById('fields').addEventListener('change',()=>setTimeout(()=>{syncBody();if(figure&&three)window.GF22Style?.(figure,window.gfGetConfig?.()||{},three)},0));document.getElementById('fields').addEventListener('input',()=>setTimeout(()=>{if(figure&&three)window.GF22Style?.(figure,window.gfGetConfig?.()||{},three)},0));
 document.getElementById('save').addEventListener('click',()=>localStorage.setItem('gf19_model',selector.value));
 </script>
+<script>
+// Phase 34: prevent double-tap browser zoom without suppressing fast game controls.
+(function(){
+ let last=0;
+ document.addEventListener('touchend',function(e){
+   const el=e.target;
+   if(el.closest && el.closest('input,textarea,select,[contenteditable="true"]'))return;
+   const now=Date.now();
+   if(now-last<320 && e.cancelable)e.preventDefault();
+   last=now;
+ },{passive:false});
+ document.addEventListener('gesturestart',function(e){if(document.getElementById('battle').classList.contains('active'))e.preventDefault()},{passive:false});
+ document.addEventListener('dblclick',function(e){if(e.cancelable)e.preventDefault()},{passive:false});
+})();
+</script>
+<style>
+#battle,#battle canvas,#battle button,#joy,#nub,#attack,#s1,#s2,#s3,#s4 {touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+</style>
 <script src="combat-overhaul.js"></script>
 <script src="phase21.js"></script>
 </body></html>
