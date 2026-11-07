@@ -311,6 +311,8 @@ const GF21 = (() => {
   }
  }
  function spawnWave(){
+  // Keep mobile frame rate stable as waves accumulate.
+  mobs=mobs.filter(m=>{if(m.alive||m.kind==='tower'||m.kind==='guard')return true;scene.remove(m.root);return false});
   for(let lane=-1;lane<=1;lane++)for(const friendly of [true,false])for(let i=0;i<6;i++){
    const z=friendly?20-i*2.5:612+i*2.5;
    const m=createMob(laneX(lane,z),z,friendly?'ally':'minion');m.friendly=friendly;
