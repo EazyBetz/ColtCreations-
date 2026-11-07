@@ -1,7 +1,7 @@
 // Godforged Phase 21: shared Z-up GLB character pipeline and rebuilt 3D Witchwood.
 const GF21 = (() => {
  let T, Loader, renderer, scene, camera, hero, modelRoot, animationFrame, prev=0, yaw=0, pitch=.16;
- let active=false, loading=false, initialized=false, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], effects=[], strike=0, attackTime=0, look=null;
+ let active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], effects=[], strike=0, attackTime=0, look=null;
  let hp=350,maxHp=350,gold=500,xp=0,level=1,kills=0,lastWave=0,recallUntil=0,respawnAt=0,shopOpen=false,baseFountain=null,baseHud=null,gameTime=0,shopPanel=null,utilityCooldown=0,shieldUntil=0,stunUntil=0,ownedItems={},powerBonus=0,armorBonus=0;
  const canvas=document.createElement('canvas');canvas.id='gf21Battle';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:none';
  document.getElementById('battle').insertBefore(canvas,document.getElementById('battle').firstChild);
@@ -289,6 +289,7 @@ const GF21 = (() => {
  else if(choice==='Heal'){hp=Math.min(maxHp,hp+95+level*7);$('status').textContent='DIVINE MEND · health restored'}
  else if(choice==='Shield'){shieldUntil=now+4500;$('status').textContent='AEGIS SHIELD · 4.5 seconds of protection'}
  else if(choice==='Stun'){for(const m of mobs)if(m.alive&&!m.friendly&&m.kind!=='tower'&&Math.hypot(m.x-position.x,m.z-position.z)<9)m.stunnedUntil=now+2400;$('status').textContent='SHOCKWAVE STUN · nearby enemies halted'}
+ combatForge?.utility(choice,position.x,position.z,yaw);
  }
  window.GF29Utility=utility;
  function gainGold(n){gold+=n;xp+=n*.65;let needed=level*250;if(xp>=needed){xp-=needed;level++;maxHp+=35;hp=Math.min(maxHp,hp+35);$('status').textContent='LEVEL UP! '+level+' · +35 HP'}}
@@ -416,24 +417,50 @@ const GF21 = (() => {
  }
  function spawn(){for(let l=-1;l<=1;l++)for(let z of [85,200,400,590]){let kind=z===400||z===590?'tower':'guard';mobs.push(createMob(laneX(l,z),z,kind));if(kind==='tower')towerZone(laneX(l,z),z)}for(let b of buffs){let c=b.kind==='POWER'?'#e94849':b.kind==='SPEED'?'#40bbf5':'#70e29c';b.orb=mesh(new T.IcosahedronGeometry(1.6,1),material(c,.2),b.x,2.4,b.z);b.orb.userData.kind=b.kind}}
  function collision(x,z){let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<9);let crossing=[125,310,510].some(a=>Math.abs(z-a)<5&&Math.abs(x)<103);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<8);return !(nearest||crossing||camp)}
- async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);spawn();spawnWave();setupHud();loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
- function hit(){if(!active||hp<=0)return;recallUntil=0;strike=(strike%3)+1;attackTime=.46;let best=null,dist=5.8;for(let m of mobs){if(!m.alive)continue;let d=Math.hypot(m.x-position.x,m.z-position.z);if(d<dist){best=m;dist=d}}if(best){best.hp-=(strike===3?55:30)+powerBonus*.4;if(best.hp<=0){best.alive=false;best.root.visible=false;gainGold(best.kind==='tower'?200:45);kills++}$('status').textContent=`${best.kind.toUpperCase()} ${Math.max(0,best.hp)}/${best.max} HP · ${strike}/3 COMBO`}}
+ async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnWave();setupHud();loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
+ // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
+ function hit(){if(!active||hp<=0)return;
+  recallUntil=0;strike=(strike%3)+1;attackTime=.46;
+  const weapon=window.gfGetConfig?.().weapon||'Greatsword';
+  const reaches={Greatsword:6.1,'War Axe':5.5,Spear:7.2,Staff:6.8,'Dual Blades':4.9};
+  let best=null,dist=reaches[weapon]||5.8;
+  const fX=Math.sin(yaw),fZ=Math.cos(yaw);
+  for(const m of mobs){
+   if(!m.alive||m.friendly)continue;
+   const dx=m.x-position.x,dz=m.z-position.z,d=Math.hypot(dx,dz);
+   if(d>=dist||d<.001)continue;
+   const facing=(dx*fX+dz*fZ)/d;
+   if(facing<(weapon==='War Axe'?.12:weapon==='Spear'?.45:.24))continue;
+   best=m;dist=d;
+  }
+  combatForge?.attack(weapon,strike,best?{x:best.x,z:best.z}:null);
+  if(best){best.hp-=(strike===3?55:30)+powerBonus*.4;
+   if(best.hp<=0){best.alive=false;best.root.visible=false;gainGold(best.kind==='tower'?200:45);kills++}
+   $('status').textContent=best.kind.toUpperCase()+' '+Math.max(0,best.hp)+'/'+best.max+' HP · '+strike+'/3 COMBO';
+  }
+ }
  function spellPart(geometry,mat,x,y,z,group){return mesh(geometry,mat,x,y,z,group)}
  let abilityReady=[0,0,0],summons=[];
  function cast(which){
   if(!active||hp<=0)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
   const cfg=window.gfGetConfig?.()||{},name=cfg['ability'+(which+1)]||'Cinder Fan';const pool={Cone:['Cinder Fan','Glacier Breath','Dread Howl'],Line:['Storm Lance','Rift Spear','Solar Rail'],Placement:['Grave Circle','Forge Turret','Verdant Snare']};let type=Object.keys(pool).find(k=>pool[k].includes(name))||'Cone';abilityReady[which]=now+(type==='Placement'?11500:7000);recallUntil=0;
   const dirX=Math.sin(yaw),dirZ=Math.cos(yaw),originX=position.x,originZ=position.z;
-  const fx=new T.Group();scene.add(fx);fx.position.set(originX,0,originZ);
-  const color=({'Cinder Fan':'#ff682d','Glacier Breath':'#9beaff','Dread Howl':'#ad61db','Storm Lance':'#8bcfff','Rift Spear':'#a26cff','Solar Rail':'#ffe19a','Grave Circle':'#bc6de4','Forge Turret':'#ffad50','Verdant Snare':'#72dc8b'})[name];
-  const mat=new T.MeshBasicMaterial({color,transparent:true,opacity:.67,depthWrite:false,side:T.DoubleSide});
   const distance=type==='Line'?19:type==='Cone'?11:13;
   const tx=originX+dirX*distance,tz=originZ+dirZ*distance;
-  if(type==='Cone'){let cone=mesh(new T.ConeGeometry(6,12,24,1,true),mat,dirX*6,.35,dirZ*6,fx);cone.rotation.x=Math.PI/2;cone.rotation.z=-yaw;cone.scale.y=.1;const ring=mesh(new T.RingGeometry(1,7,32),mat,dirX*7,.12,dirZ*7,fx);ring.rotation.x=-Math.PI/2;}
-  else if(type==='Line'){let beam=mesh(new T.BoxGeometry(2.2,.3,19),mat,dirX*9.5,.5,dirZ*9.5,fx);beam.rotation.y=yaw;}
-  else {let ring=mesh(new T.RingGeometry(1,6,40),mat,dirX*10,.2,dirZ*10,fx);ring.rotation.x=-Math.PI/2;if(name==='Forge Turret'){let turret=mesh(new T.CylinderGeometry(.6,1.1,3,8),mat,tx,1.5,tz);summons.push({mesh:turret,x:tx,z:tz,until:now+8000,next:0})}}
-  effects.push({mesh:fx,ttl:.7,max:.7,spell:which});
-  for(const m of mobs){if(!m.alive||m.friendly)continue;const dx=m.x-originX,dz=m.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX),range=Math.hypot(dx, dz);let hit=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(m.x-tx,m.z-tz)<6;if(!hit)continue;
+  if(combatForge)combatForge.ability(name,originX,originZ,yaw,tx,tz);
+  else {
+   const fx=new T.Group();scene.add(fx);fx.position.set(originX,0,originZ);
+   const mat=new T.MeshBasicMaterial({color:'#b5a2ff',transparent:true,opacity:.55,depthWrite:false,side:T.DoubleSide});
+   const indicator=mesh(new T.RingGeometry(1,3.4,32),mat,dirX*7,.12,dirZ*7,fx);
+   indicator.rotation.x=-Math.PI/2;
+   effects.push({mesh:fx,ttl:.7,max:.7,spell:which});
+  }
+  // A Forge Turret remains a persistent damaging summon, not just an effect.
+  if(name==='Forge Turret'){
+   const turret=mesh(new T.CylinderGeometry(.6,1.1,3,8),material('#997345'),tx,1.5,tz);
+   summons.push({mesh:turret,x:tx,z:tz,until:now+8000,next:0});
+  }
+ for(const m of mobs){if(!m.alive||m.friendly)continue;const dx=m.x-originX,dz=m.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX),range=Math.hypot(dx, dz);let hit=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(m.x-tx,m.z-tz)<6;if(!hit)continue;
    let dmg=type==='Line'?65:type==='Cone'?43:35; if(name==='Solar Rail')dmg=90;if(name==='Dread Howl')m.stunnedUntil=now+1100;if(name==='Glacier Breath'||name==='Verdant Snare')m.stunnedUntil=now+1700;
    m.hp-=dmg+powerBonus;if(m.hp<=0){m.alive=false;m.root.visible=false;gainGold(m.kind==='tower'?200:45);kills++}
   }
@@ -446,6 +473,7 @@ const GF21 = (() => {
  modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
+ combatForge?.tick(dt);
  if(baseFountain?.userData.heart){baseFountain.userData.heart.rotation.y+=dt*.6;baseFountain.userData.heart.position.y=6.8+Math.sin(time*.0017)*.35;}
  for(let b of buffs){if(b.alive){b.orb.visible=true;b.orb.rotation.y+=dt;b.orb.position.y=2.3+Math.sin(time*.003+b.x)*.25;if(Math.hypot(position.x-b.x,position.z-b.z)<3){b.alive=false;b.respawn=time+45000;b.orb.visible=false;if(b.kind==='SPEED')speedBuffUntil=time+20000;$('status').textContent=b.kind+' JUNGLE BUFF ACQUIRED · +25% movement for 20s'}}else if(time>b.respawn)b.alive=true}
  for(let e of effects){e.ttl-=dt;let progress=1-e.ttl/e.max;e.mesh.scale.setScalar(.72+progress*.38);if(e.spell===0)e.mesh.rotation.y+=dt*1.8;if(e.spell===2)e.mesh.rotation.y+=dt*.4;e.mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.transparent){o.material.opacity=Math.max(0,1-progress)*(.7)}});if(e.ttl<=0){scene.remove(e.mesh);e.mesh.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material.dispose)o.material.dispose()}})}}effects=effects.filter(e=>e.ttl>0);
