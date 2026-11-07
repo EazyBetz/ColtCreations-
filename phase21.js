@@ -2,7 +2,7 @@
 const GF21 = (() => {
  let T, Loader, renderer, scene, camera, hero, modelRoot, animationFrame, prev=0, yaw=0, pitch=.16;
  let active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], effects=[], strike=0, attackTime=0, look=null;
- let hp=350,maxHp=350,gold=500,xp=0,level=1,kills=0,lastWave=0,recallUntil=0,respawnAt=0,shopOpen=false,baseFountain=null,baseHud=null,gameTime=0,shopPanel=null,utilityCooldown=0,shieldUntil=0,stunUntil=0,ownedItems={},powerBonus=0,armorBonus=0;
+ let bots=[],hp=350,maxHp=350,gold=500,xp=0,level=1,kills=0,lastWave=0,recallUntil=0,respawnAt=0,shopOpen=false,baseFountain=null,baseHud=null,gameTime=0,shopPanel=null,utilityCooldown=0,shieldUntil=0,stunUntil=0,ownedItems={},powerBonus=0,armorBonus=0;
  const canvas=document.createElement('canvas');canvas.id='gf21Battle';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:none';
  document.getElementById('battle').insertBefore(canvas,document.getElementById('battle').firstChild);
  document.getElementById('world').style.display='none';
@@ -284,8 +284,8 @@ const GF21 = (() => {
  }
  function utility(){if(!active||hp<=0)return;let now=performance.now();if(now<utilityCooldown){$('status').textContent='Utility cooling down · '+Math.ceil((utilityCooldown-now)/1000)+'s';return}const choice=window.gfGetConfig?.().ability4||'Dash';utilityCooldown=now+12000;recallUntil=0;
  if(choice==='Veilwalk'){window.gfStealthUntil=now+4500;$('status').textContent='VEILWALK · hidden for 4.5 seconds'}
- else if(choice==='Sky Leap'){const step=16,nx=position.x+Math.sin(yaw)*step,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*step));if(!collision(nx,nz)){position.x=nx;position.z=nz}shieldUntil=now+700;$('status').textContent='SKY LEAP · landed'}
- else if(choice==='Wind Dash'||choice==='Dash'){const step=11,nx=position.x+Math.sin(yaw)*step,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*step));if(!collision(nx,nz)){position.x=nx;position.z=nz}$('status').textContent='WIND DASH · repositioned'}
+ else if(choice==='Sky Leap'){let landed=false;for(let d=16;d>=2;d--){const nx=position.x+Math.sin(yaw)*d,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*d));if(!collision(nx,nz)){position.x=nx;position.z=nz;landed=true;break}}shieldUntil=now+700;$('status').textContent=landed?'SKY LEAP · landed':'SKY LEAP · blocked'}
+ else if(choice==='Wind Dash'||choice==='Dash'){let landed=false;for(let d=11;d>=1;d--){const nx=position.x+Math.sin(yaw)*d,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*d));if(!collision(nx,nz)){position.x=nx;position.z=nz;landed=true;break}}$('status').textContent=landed?'WIND DASH · repositioned':'WIND DASH · blocked'}
  else if(choice==='Heal'){hp=Math.min(maxHp,hp+95+level*7);$('status').textContent='DIVINE MEND · health restored'}
  else if(choice==='Shield'){shieldUntil=now+4500;$('status').textContent='AEGIS SHIELD · 4.5 seconds of protection'}
  else if(choice==='Stun'){for(const m of mobs)if(m.alive&&!m.friendly&&m.kind!=='tower'&&Math.hypot(m.x-position.x,m.z-position.z)<9)m.stunnedUntil=now+2400;$('status').textContent='SHOCKWAVE STUN · nearby enemies halted'}
@@ -293,7 +293,83 @@ const GF21 = (() => {
  }
  window.GF29Utility=utility;
  function gainGold(n){gold+=n;xp+=n*.65;let needed=level*250;if(xp>=needed){xp-=needed;level++;maxHp+=35;hp=Math.min(maxHp,hp+35);$('status').textContent='LEVEL UP! '+level+' · +35 HP'}}
- function spawnWave(){for(let l=-1;l<=1;l++){for(let i=0;i<3;i++){const z=20-i*4,m=createMob(laneX(l,z),z,'ally');m.hp=85;m.max=85;m.speed=6.5;m.friendly=true;m.root.scale.setScalar(.75);m.role=i===2?'archer':'swordsman';m.attackClock=0;m.attackPose=0;if(m.role==='archer'){const bow=mesh(new T.TorusGeometry(.58,.065,6,14,Math.PI),material('#a27643'),.85,2.25,.5,m.root);bow.rotation.y=Math.PI/2;mesh(new T.CylinderGeometry(.025,.025,1.25,5),material('#d9b78a'),.85,2.25,.52,m.root)}else{mesh(new T.BoxGeometry(.13,1.4,.28),material('#c3c8c9'),1.15,2.5,.5,m.root)}if(m.role==='swordsman'){m.weaponPivot=new T.Group();m.weaponPivot.position.set(1.0,2.5,.5);m.root.add(m.weaponPivot);mesh(new T.BoxGeometry(.16,1.35,.24),material('#d9dee1'),0,.65,0,m.weaponPivot)}mobs.push(m)}for(let i=0;i<3;i++){const z=612+i*4,m=createMob(laneX(l,z),z,'minion');m.hp=85;m.max=85;m.speed=6;m.root.scale.setScalar(.75);m.role=i===2?'archer':'swordsman';m.attackClock=0;m.attackPose=0;if(m.role==='archer'){const bow=mesh(new T.TorusGeometry(.58,.065,6,14,Math.PI),material('#a27643'),.85,2.25,.5,m.root);bow.rotation.y=Math.PI/2;mesh(new T.CylinderGeometry(.025,.025,1.25,5),material('#d9b78a'),.85,2.25,.52,m.root)}else{mesh(new T.BoxGeometry(.13,1.4,.28),material('#c3c8c9'),1.15,2.5,.5,m.root)}if(m.role==='swordsman'){m.weaponPivot=new T.Group();m.weaponPivot.position.set(1.0,2.5,.5);m.root.add(m.weaponPivot);mesh(new T.BoxGeometry(.16,1.35,.24),material('#d9dee1'),0,.65,0,m.weaponPivot)}mobs.push(m)}}}
+
+ function equipTroop(m,role,lane){
+  m.role=role;m.lane=lane;m.attackClock=.3+Math.random()*.4;m.attackPose=0;
+  m.speed=role==='vanguard'?4.7:role==='archer'?5.5:6.2;
+  m.hp=m.max=role==='vanguard'?170:role==='archer'?65:78;
+  m.damage=role==='vanguard'?8:role==='archer'?3:4;
+  m.xpReward=role==='vanguard'?75:25;m.goldReward=role==='vanguard'?45:14;
+  m.root.scale.setScalar(role==='vanguard'?1.12:.72);
+  m.weaponPivot=new T.Group();m.weaponPivot.position.set(.95,2.5,.5);m.root.add(m.weaponPivot);
+  if(role==='archer'){
+   const bow=mesh(new T.TorusGeometry(.58,.06,6,16,Math.PI),material('#a27643'),0,0,0,m.weaponPivot);bow.rotation.y=Math.PI/2;
+   m.arrow=mesh(new T.CylinderGeometry(.024,.024,1.3,5),material('#d9b78a'),0,0,.2,m.weaponPivot);m.arrow.rotation.x=Math.PI/2;
+  }else{
+   mesh(new T.BoxGeometry(role==='vanguard'?.28:.15,role==='vanguard'?2:1.35,.25),material(role==='vanguard'?'#f0c77d':'#d9dee1'),0,.65,0,m.weaponPivot);
+   if(role==='vanguard'){mesh(new T.BoxGeometry(.85,.35,.35),material('#9c6d42'),0,1.5,0,m.weaponPivot);mesh(new T.ConeGeometry(.6,.9,7),material('#bb9a64'),0,4.1,0,m.root)}
+  }
+ }
+ function spawnWave(){
+  for(let lane=-1;lane<=1;lane++)for(const friendly of [true,false])for(let i=0;i<6;i++){
+   const z=friendly?20-i*2.5:612+i*2.5;
+   const m=createMob(laneX(lane,z),z,friendly?'ally':'minion');m.friendly=friendly;
+   equipTroop(m,i===5?'vanguard':i===2||i===4?'archer':'swordsman',lane);mobs.push(m);
+  }
+ }
+ function awardMinion(m){
+  if(m.rewarded)return;m.rewarded=true;gold+=m.goldReward||14;xp+=m.xpReward||25;
+  while(xp>=level*150){xp-=level*150;level++;maxHp+=25;hp=Math.min(maxHp,hp+25);powerBonus+=2;$('status').textContent='LEVEL '+level+' · MINION XP'}
+ }
+ function finishMob(m,credit){
+  if(!m.alive)return;m.alive=false;m.root.visible=false;
+  if(credit){if(m.kind==='minion')awardMinion(m);else gainGold(m.kind==='tower'?160:35);kills++}
+ }
+ function spawnGods(){
+  const specs=[['Aegis',true,-1,'#73c7e8'],['Ember',true,1,'#f8a869'],['Riven',false,-1,'#e87c79'],['Nyx',false,0,'#b58af0'],['Thorn',false,1,'#d6ae6a']];
+  for(const [name,friendly,lane,tint] of specs){
+   const z=friendly?25:605,x=laneX(lane,z),root=new T.Group();root.position.set(x,0,z);scene.add(root);
+   const armor=material(friendly?'#405d74':'#75424e'),accent=material(tint);
+   mesh(new T.CylinderGeometry(.54,.68,1.5,8),armor,0,1.7,0,root);
+   mesh(new T.BoxGeometry(1.35,.92,.8),accent,0,2.55,0,root);
+   mesh(new T.SphereGeometry(.46,10,8),accent,0,3.3,0,root);
+   for(const side of [-1,1]){mesh(new T.CylinderGeometry(.22,.26,1.3,7),armor,side*.9,2.1,0,root);mesh(new T.CylinderGeometry(.23,.28,1.35,7),armor,side*.36,.67,0,root)}
+   const pivot=new T.Group();pivot.position.set(.94,2.55,.3);root.add(pivot);
+   mesh(new T.BoxGeometry(.17,1.5,.25),material('#e0d8d1'),0,.72,0,pivot);
+   bots.push({name,friendly,lane,x,z,root,pivot,hp:310,max:310,alive:true,attackClock:1,attackPose:0,spellClock:4+Math.random()*4,respawnAt:0});
+  }
+ }
+ function updateGods(dt,now){
+  for(const b of bots){
+   if(!b.alive){if(now<b.respawnAt)continue;b.alive=true;b.hp=b.max;b.root.visible=true;b.z=b.friendly?25:605;b.x=laneX(b.lane,b.z)}
+   const candidates=mobs.filter(m=>m.alive&&m.friendly!==b.friendly&&m.kind!=='guard').map(m=>({x:m.x,z:m.z,obj:m,type:'mob'}));
+   for(const o of bots)if(o!==b&&o.alive&&o.friendly!==b.friendly)candidates.push({x:o.x,z:o.z,obj:o,type:'bot'});
+   if(!b.friendly&&hp>0&&now>(window.gfStealthUntil||0))candidates.push({x:position.x,z:position.z,type:'player'});
+   candidates.sort((a,c)=>Math.hypot(a.x-b.x,a.z-b.z)-Math.hypot(c.x-b.x,c.z-b.z));
+   let target=candidates[0],d=target?Math.hypot(target.x-b.x,target.z-b.z):999;
+   if(d>17){target=null;const z=b.friendly?605:25;b.z+=Math.sign(z-b.z)*Math.min(Math.abs(z-b.z),dt*6.4);b.x+=(laneX(b.lane,b.z)-b.x)*Math.min(1,dt*3);b.root.rotation.y=b.friendly?0:Math.PI}
+   else {
+    b.root.rotation.y=Math.atan2(target.x-b.x,target.z-b.z);
+    if(d>4){const step=Math.min(d-3.5,dt*6.4);b.x+=(target.x-b.x)/d*step;b.z+=(target.z-b.z)/d*step}
+    b.attackClock-=dt;b.spellClock-=dt;
+    if(d<=5&&b.attackClock<=0){
+     b.attackClock=1.2;b.attackPose=.42;let dmg=11;
+     if(target.type==='player')hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
+     else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else{target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}}}
+    }
+    if(d<13&&b.spellClock<=0){
+     b.spellClock=8+Math.random()*3;
+     combatForge?.ability(['Cinder Fan','Storm Lance','Rift Spear'][Math.floor(Math.random()*3)],b.x,b.z,b.root.rotation.y,target.x,target.z);
+     const dmg=17;
+     if(target.type==='player')hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
+     else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else{target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}}}
+    }
+   }
+   b.root.position.set(b.x,0,b.z);
+   b.attackPose=Math.max(0,b.attackPose-dt);
+   b.pivot.rotation.z=b.attackPose?Math.sin((1-b.attackPose/.42)*Math.PI)*-1.3:0;
+  }
+ }
  // Phase 30: visible danger stonework, animated melee and actual flying arrows.
  const towerRange=19;
  let combatProjectiles=[];
@@ -321,17 +397,18 @@ const GF21 = (() => {
  }
  function tickProjectiles(dt){for(let i=combatProjectiles.length-1;i>=0;i--){let p=combatProjectiles[i];p.elapsed+=dt;let t=Math.min(1,p.elapsed/p.duration);p.group.position.lerpVectors(p.start,p.end,t);p.group.position.y+=Math.sin(t*Math.PI)*.7;
    if(t>=1){if(p.hero&&hp>0&&Math.hypot(position.x-p.end.x,position.z-p.end.z)<4){let dmg=p.damage;if(performance.now()<shieldUntil)dmg*=.25;hp=Math.max(0,hp-dmg);recallUntil=0}
-    else if(p.target?.alive){p.target.hp-=p.damage;if(p.target.hp<=0){p.target.alive=false;p.target.root.visible=false;if(p.owner?.friendly)gainGold(30)}}
+    else if(p.target?.alive){p.target.hp-=p.damage;if(p.target.hp<=0){p.target.alive=false;p.target.root.visible=false;if(p.owner?.friendly&&p.target.kind==='minion')awardMinion(p.target)}}
     scene.remove(p.group);combatProjectiles.splice(i,1)}
   }}
- function updateBattleSystems(dt,time){gameTime+=dt;if(gameTime-lastWave>22){lastWave=gameTime;spawnWave();$('status').textContent='Minion wave approaching · swordsmen and archers'}
+ function updateBattleSystems(dt,time){gameTime+=dt;if(gameTime-lastWave>27){lastWave=gameTime;spawnWave();$('status').textContent='3 lanes · 5 troops and 1 Vanguard per wave'}
+ updateGods(dt,time);
  const takeDamage=(n)=>{if(hp<=0)return;if(time<shieldUntil)n*=.25;hp=Math.max(0,hp-n);if(n>0)recallUntil=0};
  if(hp>0){if(Math.hypot(position.x-laneX(0,16),position.z-16)<13)hp=Math.min(maxHp,hp+dt*90);else hp=Math.min(maxHp,hp+dt*.65);if(recallUntil&&time>=recallUntil){position.x=laneX(0,16);position.z=16;recallUntil=0;$('status').textContent='Returned to sanctuary · healing'}}else if(time>respawnAt){hp=maxHp;respawnAt=0;position.x=laneX(0,16);position.z=16;$('status').textContent='Respawned at sanctuary'}
- for(let m of mobs){if(!m.alive)continue;if(m.kind==='ally'||m.kind==='minion'){if(time<(m.stunnedUntil||0))continue;const dir=m.friendly?1:-1,range=m.role==='archer'?11:3.8;let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range;
- if(!target&&!heroTarget){m.z+=dir*dt*m.speed;m.x=laneX(Math.max(-1,Math.min(1,Math.round(m.x/95))),m.z);m.root.position.set(m.x,0,m.z)}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?1.9:1.3;let damage=m.role==='archer'?5:7;m.attackPose=.42;if(m.role==='archer'){
+ for(let m of mobs){if(!m.alive)continue;if(m.kind==='ally'||m.kind==='minion'){if(time<(m.stunnedUntil||0))continue;const dir=m.friendly?1:-1,range=m.role==='archer'?11:m.role==='vanguard'?4.4:3.8;let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range;
+ if(!target&&!heroTarget){m.z+=dir*dt*m.speed;m.x=laneX(Math.max(-1,Math.min(1,Math.round(m.x/95))),m.z);m.root.position.set(m.x,0,m.z)}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?2.1:m.role==='vanguard'?1.7:1.35;let damage=m.damage||4;m.attackPose=.42;if(m.role==='archer'){
   let aim=target?{x:target.x,y:2.3,z:target.z,target}:{x:position.x,y:2.2,z:position.z,hero:true};
   fireProjectile({x:m.x,y:2.8,z:m.z},aim,damage,'arrow',m);
- }else if(target){target.hp-=damage;if(target.hp<=0){target.alive=false;target.root.visible=false;if(m.friendly)gainGold(30)}}else if(heroTarget)takeDamage(damage)}}
+ }else if(target){target.hp-=damage;if(target.hp<=0){target.alive=false;target.root.visible=false;if(m.friendly&&target.kind==='minion')awardMinion(target)}}else if(heroTarget)takeDamage(damage)}}
  if(m.z<16||m.z>625){m.alive=false;m.root.visible=false;continue}}
  else if(m.kind==='tower'&&m.z>300){
   m.attackClock=(m.attackClock||0)-dt;
@@ -345,7 +422,7 @@ const GF21 = (() => {
   }
  } }
  tickProjectiles(dt);
- for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot)m.weaponPivot.rotation.z=-Math.sin((1-m.attackPose/.42)*Math.PI)*1.25;m.root.rotation.y=Math.sin((1-m.attackPose/.42)*Math.PI)*.22*(m.friendly?1:-1)}}
+ for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot){const t=1-m.attackPose/.42;m.weaponPivot.rotation.z=m.role==='archer'?Math.sin(t*Math.PI)*.5:-Math.sin(t*Math.PI)*(m.role==='vanguard'?1.6:1.25);if(m.arrow)m.arrow.position.z=.2-Math.sin(t*Math.PI)*.35;}m.root.rotation.y=Math.sin((1-m.attackPose/.42)*Math.PI)*.22*(m.friendly?1:-1)}}
  if(hp<=0&&!respawnAt){respawnAt=time+7000;$('status').textContent='Defeated · respawning in 7 seconds'}
  if(baseHud){$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
  }
@@ -417,7 +494,7 @@ const GF21 = (() => {
  }
  function spawn(){for(let l=-1;l<=1;l++)for(let z of [85,200,400,590]){let kind=z===400||z===590?'tower':'guard';mobs.push(createMob(laneX(l,z),z,kind));if(kind==='tower')towerZone(laneX(l,z),z)}for(let b of buffs){let c=b.kind==='POWER'?'#e94849':b.kind==='SPEED'?'#40bbf5':'#70e29c';b.orb=mesh(new T.IcosahedronGeometry(1.6,1),material(c,.2),b.x,2.4,b.z);b.orb.userData.kind=b.kind}}
  function collision(x,z){let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<9);let crossing=[125,310,510].some(a=>Math.abs(z-a)<5&&Math.abs(x)<103);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<8);return !(nearest||crossing||camp)}
- async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnWave();setupHud();loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
+ async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnWave();spawnGods();setupHud();loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
  // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
  function hit(){if(!active||hp<=0)return;
   recallUntil=0;strike=(strike%3)+1;attackTime=.46;
@@ -435,7 +512,7 @@ const GF21 = (() => {
   }
   combatForge?.attack(weapon,strike,best?{x:best.x,z:best.z}:null);
   if(best){best.hp-=(strike===3?55:30)+powerBonus*.4;
-   if(best.hp<=0){best.alive=false;best.root.visible=false;gainGold(best.kind==='tower'?200:45);kills++}
+   if(best.hp<=0)finishMob(best,true)
    $('status').textContent=best.kind.toUpperCase()+' '+Math.max(0,best.hp)+'/'+best.max+' HP · '+strike+'/3 COMBO';
   }
  }
@@ -462,7 +539,7 @@ const GF21 = (() => {
   }
  for(const m of mobs){if(!m.alive||m.friendly)continue;const dx=m.x-originX,dz=m.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX),range=Math.hypot(dx, dz);let hit=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(m.x-tx,m.z-tz)<6;if(!hit)continue;
    let dmg=type==='Line'?65:type==='Cone'?43:35; if(name==='Solar Rail')dmg=90;if(name==='Dread Howl')m.stunnedUntil=now+1100;if(name==='Glacier Breath'||name==='Verdant Snare')m.stunnedUntil=now+1700;
-   m.hp-=dmg+powerBonus;if(m.hp<=0){m.alive=false;m.root.visible=false;gainGold(m.kind==='tower'?200:45);kills++}
+   m.hp-=dmg+powerBonus;if(m.hp<=0)finishMob(m,true)
   }
   $('status').textContent=name.toUpperCase()+' · '+type+' power';
  }
