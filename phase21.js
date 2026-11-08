@@ -33,8 +33,8 @@ const GF21 = (() => {
  function hut(x,z,seed,kind='house'){
   townMaterials();const g=new T.Group();g.position.set(x,0,z);g.rotation.y=Math.sin(seed*2.7)*.27;scene.add(g);
   const r=seed-Math.floor(seed),w=kind==='shed'?3.6:4.7+r*2.9,d=kind==='shed'?3.5:4.5+(Math.sin(seed*3)+1)*1.1,h=kind==='shed'?2.9:3.8+(Math.sin(seed*7)+1)*.65;
-  const wall=surface('plaster',['#b7aaa0','#c6b7a5','#b1b3a9','#bba5a0','#aab6ab'][Math.abs(Math.floor(seed*7))%5]);
-  const roof=surface('slate',['#92989f','#a38d8a','#899e94','#a28c8e'][Math.abs(Math.floor(seed*3))%4]);
+  const wall=surface('plaster',['#cbb8a3','#d6c9b5','#b7b8a6','#c4a997','#9aaea5'][Math.abs(Math.floor(seed*7))%5]);
+  const roof=surface('slate',['#58626a','#775f63','#5c706a','#665b6b'][Math.abs(Math.floor(seed*3))%4]);
   mesh(new T.BoxGeometry(w,h,d),wall,0,h/2,0,g);
   // Actual pitched roof: two angled wooden roof panels and a ridge, not a cone.
   const roofRise=kind==='shed'?1.25:2.1,half=w/2+.42,slope=Math.atan2(roofRise,half);
@@ -43,8 +43,11 @@ const GF21 = (() => {
   // Exposed timber frame and deliberately asymmetric windows.
   for(let side of [-1,1]){mesh(new T.BoxGeometry(.23,h,.26),townMats.beam,side*(w/2-.15),h/2,d/2+.04,g);mesh(new T.BoxGeometry(.22,h,.24),townMats.beam,side*(w/2-.15),h/2,-d/2-.04,g)}
   mesh(new T.BoxGeometry(w,.22,.3),townMats.beam,0,h*.73,d/2+.05,g);
+  mesh(new T.BoxGeometry(w+.15,.35,d+.15),townMats.stone,0,.18,0,g);
+  for(const side of [-1,1]){mesh(new T.BoxGeometry(.24,.8,.38),townMats.plank,side*(w/2-.3),h-.3,d/2+.18,g);mesh(new T.BoxGeometry(.24,.8,.38),townMats.plank,side*(w/2-.3),h-.3,-d/2-.18,g)}
+  mesh(new T.BoxGeometry(.2,.14,d+.9),townMats.iron,0,h+roofRise+.2,0,g);
   const doorX=(Math.sin(seed*5)>.2?w*.18:-w*.18);mesh(new T.BoxGeometry(1.08,2.25,.13),townMats.beam,doorX,1.13,d/2+.11,g);mesh(new T.BoxGeometry(.1,.1,.14),townMats.iron,doorX+.35,1.12,d/2+.23,g);
-  if(kind!=='shed'){for(let i=0;i<(kind==='inn'?3:2);i++){let wx=-w*.33+i*w*.32;if(Math.abs(wx-doorX)<.8)continue;mesh(new T.BoxGeometry(.74,.83,.13),townMats.glass,wx,h*.56,d/2+.15,g);mesh(new T.BoxGeometry(.11,.9,.16),townMats.beam,wx,h*.56,d/2+.25,g);mesh(new T.BoxGeometry(.8,.12,.16),townMats.beam,wx,h*.56,d/2+.25,g)} }
+  if(kind!=='shed'){for(let i=0;i<(kind==='inn'?3:2);i++){let wx=-w*.33+i*w*.32;if(Math.abs(wx-doorX)<.8)continue;mesh(new T.BoxGeometry(.74,.83,.13),townMats.glass,wx,h*.56,d/2+.15,g);mesh(new T.BoxGeometry(.11,.9,.16),townMats.beam,wx,h*.56,d/2+.25,g);mesh(new T.BoxGeometry(.8,.12,.16),townMats.beam,wx,h*.56,d/2+.25,g);mesh(new T.BoxGeometry(.94,.12,.36),townMats.stone,wx,h*.56-.48,d/2+.33,g)} }
   if(seed%3<1.7){mesh(new T.BoxGeometry(.9,2.3,.9),wall,w*.28,h+1,-d*.2,g);mesh(new T.BoxGeometry(1.13,.2,1.13),townMats.stone,w*.28,h+2.2,-d*.2,g)}
   if(kind==='inn'){const sign=mesh(new T.BoxGeometry(1.9,.75,.18),townMats.plank,-w*.2,2.8,d/2+.38,g);sign.rotation.z=-.08;mesh(new T.BoxGeometry(.1,.9,.12),townMats.iron,-w*.2,3.4,d/2+.35,g)}
   if(kind==='shed'){mesh(new T.BoxGeometry(1.7,1.7,.15),townMats.plank,0,.85,d/2+.2,g);mesh(new T.BoxGeometry(.14,1.9,.18),townMats.beam,0,.85,d/2+.3,g)}
@@ -243,27 +246,32 @@ const GF21 = (() => {
  function ribbon(l,width,mat,y=.08){const verts=[],uv=[],idx=[],segments=210;for(let i=0;i<=segments;i++){let z=4+i*636/segments,x=laneX(l,z);for(let side of [-1,1]){verts.push(x+side*width/2,y,z);uv.push(side<0?0:1,z/9)}}for(let i=0;i<segments;i++){let a=i*2;idx.push(a,a+2,a+1,a+1,a+2,a+3)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(verts,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();const m=mesh(g,mat,0,0,0);m.receiveShadow=true;return m}
  function cobblestoneLanes(){let edge=material('#514f49');const cobble=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:1});for(let l=-1;l<=1;l++){ribbon(l,15,edge,.045);ribbon(l,12.8,cobble,.105);for(let z=25;z<625;z+=14){for(let side of [-1,1]){let x=laneX(l,z)+side*7.65;let curb=mesh(new T.BoxGeometry(.85,.36,3.5),material((Math.floor(z/14)%3)?'#6a685f':'#77736a'),x,.20,z);curb.rotation.y=Math.sin(z*.013+l*2.3)*.05}}}}
  function fountain(x,z,friendly){
-  // A DRY sanctuary: rune-carved dais, hovering heartstone, stone arches and healing rays.
+  // Flat, irregular enchanted water sanctuary with lethal enemy protection.
   const g=new T.Group();g.position.set(x,0,z);scene.add(g);
-  const stone=material(friendly?'#585c66':'#5d454b'),trim=material('#9c896a'),dark=material('#25282f');
-  const light=new T.MeshStandardMaterial({color:friendly?'#64e9cf':'#fa718a',emissive:friendly?'#22c9ac':'#da344e',emissiveIntensity:1.5,metalness:.3,roughness:.25});
-  mesh(new T.CylinderGeometry(11.8,13,.9,12),stone,0,.45,0,g);
-  mesh(new T.CylinderGeometry(9.8,10,.24,12),dark,0,1,0,g);
-  for(let r of [5.4,8.8]){let rune=mesh(new T.TorusGeometry(r,.13,6,64),light,0,1.17,0,g);rune.rotation.x=Math.PI/2}
-  for(let i=0;i<12;i++){let a=i*Math.PI/6;const x=Math.sin(a)*7.25,z=Math.cos(a)*7.25;
-   let slab=mesh(new T.BoxGeometry(1.3,.08,2.5),trim,x,1.19,z,g);slab.rotation.y=a;
-   let glyph=mesh(new T.BoxGeometry(.18,.09,1.45),light,x,1.25,z,g);glyph.rotation.y=a;
+  const stone=material(friendly?'#435963':'#593c4e'),trim=material('#aa9978');
+  const water=new T.MeshStandardMaterial({color:friendly?'#329eaf':'#b54170',emissive:friendly?'#14667a':'#6b153d',emissiveIntensity:.75,transparent:true,opacity:.86,metalness:.45,roughness:.18,side:T.DoubleSide});
+  const light=new T.MeshStandardMaterial({color:friendly?'#7deeff':'#ff8cac',emissive:friendly?'#26b7da':'#da3864',emissiveIntensity:1.65});
+  const outline=[],segments=32;
+  for(let i=0;i<segments;i++){const a=i*Math.PI*2/segments,r=14.5+Math.sin(a*3+.4)*2.1+Math.cos(a*5)*1.25;outline.push([Math.cos(a)*r,Math.sin(a)*r])}
+  const verts=[0,.11,0],idx=[];
+  for(const [px,pz] of outline)verts.push(px,.11,pz);
+  for(let i=0;i<segments;i++)idx.push(0,i+1,(i+1)%segments+1);
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
+  mesh(geo,water,0,0,0,g);
+  for(let i=0;i<segments;i++){const [ax,az]=outline[i],[bx,bz]=outline[(i+1)%segments];const dx=bx-ax,dz=bz-az;
+   const edge=mesh(new T.BoxGeometry(Math.hypot(dx,dz),.34,.55),stone,(ax+bx)/2,.12,(az+bz)/2,g);edge.rotation.y=-Math.atan2(dz,dx);
   }
-  for(let i=0;i<4;i++){let a=i*Math.PI/2+Math.PI/4,x=Math.sin(a)*10,z=Math.cos(a)*10;
-   mesh(new T.CylinderGeometry(.9,1.2,5.7,8),stone,x,3.8,z,g);
-   mesh(new T.CylinderGeometry(1.5,1.1,.65,8),trim,x,6.8,z,g);
-   mesh(new T.ConeGeometry(1.2,2.5,5),dark,x,8.3,z,g);
-   mesh(new T.SphereGeometry(.45,8,6),light,x,6.3,z,g);
+  for(let i=0;i<7;i++){const a=i*Math.PI*2/7,r=6.2+(i%2)*2.8;
+   const slab=mesh(new T.BoxGeometry(2.1,.18,1.2),trim,Math.sin(a)*r,.15,Math.cos(a)*r,g);slab.rotation.y=a;
+   const rune=mesh(new T.TorusGeometry(.72,.06,5,18),light,Math.sin(a)*r,.28,Math.cos(a)*r,g);rune.rotation.x=Math.PI/2;
   }
-  const core=mesh(new T.OctahedronGeometry(2.1,1),light,0,6.8,0,g);
-  mesh(new T.TorusGeometry(3.2,.19,8,48),trim,0,6.8,0,g);
-  let aura=mesh(new T.CylinderGeometry(2.4,3.4,5.2,16,1,true),new T.MeshBasicMaterial({color:friendly?0x54e7ca:0xef6079,transparent:true,opacity:.12,depthWrite:false,side:T.DoubleSide}),0,4.1,0,g);
-  g.userData.heart=core;g.userData.aura=aura;
+  for(let i=0;i<4;i++){const a=i*Math.PI/2+.4;
+   mesh(new T.CylinderGeometry(.6,.9,4.2,7),stone,Math.sin(a)*12.5,2.1,Math.cos(a)*12.5,g);
+   mesh(new T.OctahedronGeometry(.6,0),light,Math.sin(a)*12.5,4.7,Math.cos(a)*12.5,g);
+  }
+  const core=mesh(new T.OctahedronGeometry(1.15,0),light,0,1.55,0,g);
+  const ring=mesh(new T.TorusGeometry(18,.18,6,72),light,0,.21,0,g);ring.rotation.x=Math.PI/2;
+  g.userData.heart=core;g.userData.aura=ring;
   return g;
  }
  function buildBases(){for(let l=-1;l<=1;l++){let x=laneX(l,16);const platform=mesh(new T.CylinderGeometry(17,18,.35,18),material('#55565a'),x,.12,16);platform.receiveShadow=true;let enemyX=laneX(l,628);mesh(new T.CylinderGeometry(17,18,.35,18),material('#52474a'),enemyX,.12,628)}baseFountain=fountain(laneX(0,16),16,true);fountain(laneX(0,628),628,false)}
@@ -276,7 +284,7 @@ const GF21 = (() => {
   {name:'Swiftstep Boots',icon:'➜',desc:'Mobility · +8% movement',cost:250,up:'Windrunner',upgrade:450,bonus:'speed'}
  ];
  function updateShop(){if(!shopPanel)return;const atBase=inSanctuary(position.x,position.z,true);shopPanel.querySelector('#gf29ShopInfo').textContent=`${gold} GOLD · ${atBase?'SANCTUARY SHOP':'Return to sanctuary to purchase'}`;shopPanel.querySelector('.gf29-grid').innerHTML=itemTrees.map((it,i)=>{let rank=ownedItems[i]||0;return `<div class="gf29-item"><b>${it.icon} ${it.name}</b><small>${it.desc}</small><div style="font-size:11px;color:#b9c5ce">${rank?'✓ Tier '+rank:'Tier 1'} → ${it.up}</div><button data-buy="${i}" ${rank===2||!atBase||gold<(rank?it.upgrade:it.cost)?'disabled':''}>${rank===2?'MAXED':rank?'Upgrade '+it.upgrade+'g':'Buy '+it.cost+'g'}</button></div>`}).join('');shopPanel.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const i=+b.dataset.buy,it=itemTrees[i],rank=ownedItems[i]||0,cost=rank?it.upgrade:it.cost;if(rank>=2||gold<cost||!inSanctuary(position.x,position.z,true))return;gold-=cost;ownedItems[i]=rank+1;if(it.bonus==='health'){maxHp+=rank?125:75;hp+=rank?125:75}else if(it.bonus==='speed'){speedBuffUntil=Math.max(speedBuffUntil,performance.now()+60000)}else powerBonus+=rank?22:12;$('status').textContent='Purchased '+(rank?it.up:it.name);updateShop()})}
- function setupHud(){if(baseHud)return;baseHud=document.createElement('div');baseHud.id='gf27Hud';baseHud.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:6px;justify-content:center;font:700 12px system-ui;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none';baseHud.innerHTML='<span id="gf27HP" style="background:#1c322dcc;padding:7px 10px;border:1px solid #68c4a2;border-radius:8px">HP 350/350</span><span id="gf27Gold" style="background:#2c251bcc;padding:7px 10px;border:1px solid #d5b86d;border-radius:8px">500 GOLD</span><span id="gf27Level" style="background:#1a2034cc;padding:7px 10px;border:1px solid #7d8dce;border-radius:8px">LV 1</span>';document.getElementById('battle').appendChild(baseHud);
+ function setupHud(){if(baseHud)return;baseHud=document.createElement('div');baseHud.id='gf27Hud';baseHud.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:6px;justify-content:center;font:700 12px system-ui;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none';baseHud.innerHTML='<span id="gf35Timer" style="background:#171b29e8;padding:7px 10px;border:1px solid #8e8bb7;border-radius:8px">WAVE 0:30</span><span id="gf27HP" style="background:#1c322dcc;padding:7px 10px;border:1px solid #68c4a2;border-radius:8px">HP 350/350</span><span id="gf27Gold" style="background:#2c251bcc;padding:7px 10px;border:1px solid #d5b86d;border-radius:8px">500 GOLD</span><span id="gf27Level" style="background:#1a2034cc;padding:7px 10px;border:1px solid #7d8dce;border-radius:8px">LV 1</span>';document.getElementById('battle').appendChild(baseHud);
  const controls=document.createElement('div');controls.id='gf27Controls';controls.style.cssText='position:absolute;top:27%;right:8px;z-index:85;display:flex;flex-direction:column;gap:8px;pointer-events:auto';controls.innerHTML='<button id="gf27Recall" style="background:#293b55ed;color:white;border:1px solid #88baff;border-radius:9px;padding:7px;font-size:11px;font-weight:700">↩ RECALL</button><button id="gf27Shop" style="background:#534020ed;color:white;border:1px solid #efc87a;border-radius:9px;padding:7px;font-size:11px;font-weight:700">⚒ SHOP</button>';document.getElementById('battle').appendChild(controls);
  shopPanel=document.createElement('div');shopPanel.id='gf29ShopPanel';shopPanel.hidden=true;shopPanel.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px"><div><h2>DIVINE ITEM FORGE</h2><div id="gf29ShopInfo"></div></div><button id="gf29Close">✕ CLOSE</button></div><p style="font-size:12px;color:#bac5cf">Six item trees · each has two tiers · purchases available at your sanctuary.</p><div class="gf29-grid"></div>';document.getElementById('battle').appendChild(shopPanel);shopPanel.querySelector('#gf29Close').onclick=()=>shopPanel.hidden=true;
  $('gf27Recall').onclick=()=>{if(hp<=0)return;recallUntil=performance.now()+4500;$('status').textContent='Recalling to sanctuary · 4.5 seconds · movement or damage cancels'};
@@ -345,7 +353,8 @@ const GF21 = (() => {
  function updateGods(dt,now){
   for(const b of bots){
    if(!b.alive){if(now<b.respawnAt)continue;b.alive=true;b.hp=b.max;b.root.visible=true;b.z=b.friendly?16:628;b.x=laneX(0,b.z);b.spawnSpinUntil=now+1100}
-   const candidates=mobs.filter(m=>m.alive&&m.friendly!==b.friendly&&m.kind!=='guard').map(m=>({x:m.x,z:m.z,obj:m,type:'mob'}));
+   const candidates=mobs.filter(m=>m.alive&&m.friendly!==b.friendly&&m.kind!=='guard'&&(m.kind!=='tower'||Math.abs(m.x-laneX(b.lane,m.z))<15)).map(m=>({x:m.x,z:m.z,obj:m,type:'mob'}));
+   for(const titan of baseStructures)if(titan.alive&&titan.friendly!==b.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&m.friendly===titan.friendly&&m.lane===b.lane))candidates.push({x:titan.x,z:titan.z,obj:titan,type:'titan'});
    for(const o of bots)if(o!==b&&o.alive&&o.friendly!==b.friendly)candidates.push({x:o.x,z:o.z,obj:o,type:'bot'});
    if(!b.friendly&&hp>0&&now>(window.gfStealthUntil||0))candidates.push({x:position.x,z:position.z,type:'player'});
    candidates.sort((a,c)=>Math.hypot(a.x-b.x,a.z-b.z)-Math.hypot(c.x-b.x,c.z-b.z));
@@ -358,14 +367,14 @@ const GF21 = (() => {
     if(d<=5&&b.attackClock<=0){
      b.attackClock=1.2;b.attackPose=.42;let dmg=11;
      if(target.type==='player')hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
-     else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else{target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}}}
+     else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else if(target.type==='bot'){target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}else if(target.type==='titan')endIfTitanDestroyed(target.obj)}}
     }
     if(d<13&&b.spellClock<=0){
      b.spellClock=8+Math.random()*3;
      combatForge?.ability(['Cinder Fan','Storm Lance','Rift Spear'][Math.floor(Math.random()*3)],b.x,b.z,b.root.rotation.y,target.x,target.z);
      const dmg=17;
      if(target.type==='player')hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
-     else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else{target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}}}
+     else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else if(target.type==='bot'){target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}else if(target.type==='titan')endIfTitanDestroyed(target.obj)}}
     }
    }
    b.root.position.set(b.x,0,b.z);
@@ -414,12 +423,12 @@ const GF21 = (() => {
   let aim=target?{x:target.x,y:2.3,z:target.z,target}:{x:position.x,y:2.2,z:position.z,hero:true};
   fireProjectile({x:m.x,y:2.8,z:m.z},aim,damage,'arrow',m);
  }else if(target){target.hp-=damage;if(target.hp<=0){target.alive=false;target.root.visible=false;if(m.friendly&&target.kind==='minion')awardMinion(target)}}else if(heroTarget)takeDamage(damage)}}
- if(m.z<16||m.z>625){m.alive=false;m.root.visible=false;continue}}
+ if(m.z<3||m.z>641){m.alive=false;m.root.visible=false;continue}}
  }
  tickProjectiles(dt);
  for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot){const t=1-m.attackPose/.42;m.weaponPivot.rotation.z=m.role==='archer'?Math.sin(t*Math.PI)*.5:-Math.sin(t*Math.PI)*(m.role==='vanguard'?1.6:1.25);if(m.arrow)m.arrow.position.z=.2-Math.sin(t*Math.PI)*.35;}m.root.rotation.y=Math.sin((1-m.attackPose/.42)*Math.PI)*.22*(m.friendly?1:-1)}}
  if(hp<=0&&!respawnAt){respawnAt=time+7000;$('status').textContent='Defeated · respawning in 7 seconds'}
- if(baseHud){$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
+ if(baseHud){$('gf35Timer').textContent=matchEnded?'MATCH OVER':matchElapsed<30?'WAVE 0:'+String(Math.ceil(30-matchElapsed)).padStart(2,'0'):'NEXT '+Math.max(0,Math.ceil(27-(matchElapsed-lastWave)))+'s';$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
  }
  function groundHeight(x,z){return Math.sin(x*.07)*.12+Math.sin(z*.045)*.11}
  function makeTerrain(){
@@ -512,6 +521,7 @@ const GF21 = (() => {
    baseStructures.push(titan);
   }
  }
+ function endIfTitanDestroyed(titan){if(titan.hp>0||!titan.alive)return;titan.alive=false;titan.root.visible=false;matchEnded=true;$('status').textContent=titan.friendly?'DEFEAT · YOUR TITAN HAS FALLEN':'VICTORY · ENEMY TITAN DEFEATED'}
  function updateDefenses(dt,now){
   if(matchEnded)return;
   const targets=[...mobs.filter(m=>m.alive&&(m.kind==='ally'||m.kind==='minion')),...bots.filter(b=>b.alive)];
@@ -538,7 +548,7 @@ const GF21 = (() => {
     if(target){target.hp-=dmg;if(target.hp<=0){if(target.kind==='ally'||target.kind==='minion')finishMob(target,false);else{target.alive=false;target.root.visible=false;target.respawnAt=now+11000}}}
     else hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
    }else titan.weapon.rotation.z+=(0-titan.weapon.rotation.z)*Math.min(1,dt*5);
-   if(titan.hp<=0){titan.alive=false;titan.root.visible=false;matchEnded=true;$('status').textContent=titan.friendly?'DEFEAT · YOUR TITAN HAS FALLEN':'VICTORY · ENEMY TITAN DEFEATED'}
+   endIfTitanDestroyed(titan)
   }
   // Sanctuary water is lethal to enemies, but safe for allied upgrades.
   for(const b of bots)if(b.alive&&inSanctuary(b.x,b.z,!b.friendly)){b.hp=0;b.alive=false;b.root.visible=false;b.respawnAt=now+11000}
@@ -602,7 +612,7 @@ const GF21 = (() => {
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
  combatForge?.tick(dt);
- if(baseFountain?.userData.heart){baseFountain.userData.heart.rotation.y+=dt*.6;baseFountain.userData.heart.position.y=6.8+Math.sin(time*.0017)*.35;}
+ if(baseFountain?.userData.heart){baseFountain.userData.heart.rotation.y+=dt*.6;baseFountain.userData.heart.position.y=1.55+Math.sin(time*.0017)*.35;}
  for(let b of buffs){if(b.alive){b.orb.visible=true;b.orb.rotation.y+=dt;b.orb.position.y=2.3+Math.sin(time*.003+b.x)*.25;if(Math.hypot(position.x-b.x,position.z-b.z)<3){b.alive=false;b.respawn=time+45000;b.orb.visible=false;if(b.kind==='SPEED')speedBuffUntil=time+20000;$('status').textContent=b.kind+' JUNGLE BUFF ACQUIRED · +25% movement for 20s'}}else if(time>b.respawn)b.alive=true}
  for(let e of effects){e.ttl-=dt;let progress=1-e.ttl/e.max;e.mesh.scale.setScalar(.72+progress*.38);if(e.spell===0)e.mesh.rotation.y+=dt*1.8;if(e.spell===2)e.mesh.rotation.y+=dt*.4;e.mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.transparent){o.material.opacity=Math.max(0,1-progress)*(.7)}});if(e.ttl<=0){scene.remove(e.mesh);e.mesh.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material.dispose)o.material.dispose()}})}}effects=effects.filter(e=>e.ttl>0);
  let w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h){if(canvas.width!==Math.round(w*renderer.getPixelRatio())||canvas.height!==Math.round(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}renderer.render(scene,camera)} }
