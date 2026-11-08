@@ -571,7 +571,14 @@ const GF21 = (() => {
    if(facing<(weapon==='War Axe'?.12:weapon==='Spear'?.45:.24))continue;
    best=m;dist=d;
   }
-  combatForge?.attack(weapon,strike,best?{x:best.x,z:best.z}:null);
+  // Gods and final Titan can be targeted by the same basic attacks.
+  let special=null;
+  for(const bot of bots)if(bot.alive&&!bot.friendly){const d=Math.hypot(bot.x-position.x,bot.z-position.z);if(d<dist){const facing=((bot.x-position.x)*fX+(bot.z-position.z)*fZ)/Math.max(.001,d);if(facing>.24){special=bot;best=null;dist=d}}}
+  for(const titan of baseStructures)if(titan.alive&&!titan.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&!m.friendly&&m.lane===Math.round(position.x/95))){const d=Math.hypot(titan.x-position.x,titan.z-position.z);if(d<dist){special=titan;best=null;dist=d}}
+  combatForge?.attack(weapon,strike,best?{x:best.x,z:best.z}:special?{x:special.x,z:special.z}:null);
+  if(special){special.hp-=(strike===3?55:30)+powerBonus*.4;if(special.kind==='titan')endIfTitanDestroyed(special);else if(special.hp<=0){special.alive=false;special.root.visible=false;special.respawnAt=performance.now()+11000;gainGold(85);kills++}
+   $('status').textContent=(special.name||'TITAN')+' '+Math.max(0,Math.ceil(special.hp))+' HP';
+  }
   if(best){best.hp-=(strike===3?55:30)+powerBonus*.4;
    if(best.hp<=0)finishMob(best,true)
    $('status').textContent=best.kind.toUpperCase()+' '+Math.max(0,best.hp)+'/'+best.max+' HP · '+strike+'/3 COMBO';
