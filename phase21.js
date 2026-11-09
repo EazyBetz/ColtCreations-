@@ -453,7 +453,12 @@ const GF21 = (() => {
   buildBases();
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
- function applyStyle(root){window.GF22Style?.(root,window.gfGetConfig?.()||{},T)}
+ function applyStyle(root){window.GF22Style?.(root,window.gfGetConfig?.()||{},T);
+  // Preserve authored GLB character proportions while improving material response.
+  root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;
+   if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.isMeshStandardMaterial||m.isMeshPhysicalMaterial){m.roughness=Math.max(.28,Math.min(.88,m.roughness??.68));m.metalness=Math.max(0,Math.min(.62,m.metalness??.1));m.needsUpdate=true}}}
+  });
+ }
  async function getGod(){let selected=localStorage.getItem('gf19_model')||'goddess_muscular';let g=await new Promise((resolve,reject)=>new Loader().load('models/'+selected+'.glb',resolve,undefined,reject));const root=new T.Group();root.add(fitGLB(g.scene));applyStyle(root);return root}
  function createMob(x,z,kind){
   const root=new T.Group();root.position.set(x,0,z);scene.add(root);
@@ -581,7 +586,7 @@ const GF21 = (() => {
   weaponAttackAge+=dt;
   const duration=selected==='War Axe'?.63:selected==='Spear'?.43:.48;
   const t=Math.min(1,weaponAttackAge/duration);
-  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);return}
+  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);weaponRig.position.z=.3;return}
   const swing=Math.sin(t*Math.PI);
   // Left, right, then overhead. Spear uses a forward thrust on the third hit.
   if(weaponAttackStep===3&&selected==='Spear'){
