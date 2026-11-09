@@ -12,7 +12,30 @@
 #battle:before{content:'WITCHWOOD · DIVINE REBIRTH';position:absolute;top:5px;left:50%;transform:translateX(-50%);font:700 12px Georgia;color:#f0d3a0;letter-spacing:.15em;z-index:2;pointer-events:none;text-shadow:0 2px 5px #000}
 @media(max-width:700px){#battle:before{font-size:9px;top:3px}.hudtop{top:5px;left:5px}.minimap{width:84px;height:84px}}
 #gf29ShopPanel{position:absolute;inset:7% 5%;z-index:120;background:linear-gradient(145deg,#141a22f5,#211b2cf8);border:1px solid #d5b779;border-radius:14px;padding:14px;color:#f3e7d0;overflow:auto;box-shadow:0 10px 40px #000d;touch-action:pan-y}#gf29ShopPanel[hidden]{display:none}#gf29ShopPanel h2{margin:0 0 6px;font-size:20px}#gf29ShopPanel .gf29-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#gf29ShopPanel .gf29-item{background:#25283b;border:1px solid #77694e;padding:10px;border-radius:9px;min-height:100px}#gf29ShopPanel .gf29-item b{display:block;color:#e6c984}#gf29ShopPanel .gf29-item small{display:block;min-height:32px}#gf29ShopPanel button{padding:7px;margin-top:5px;font-size:12px}#s4{border-color:#75d6bf;background:linear-gradient(130deg,#16473e,#202c46)}@media(max-width:680px){#gf29ShopPanel .gf29-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#gf29ShopPanel{inset:4% 3%}} </style></head><body>
-<section id="home" class="screen active"><header><div><div class="logo">GODFORGED</div><div class="small">BATTLE BEFORE DAWN · PHASE 40</div></div><div class="small" style="color:#c7e8ff">PHASE 40 · BATTLE BEFORE DAWN</div></header><div class="menu"><button data-go="modes">⚔ PLAY CONQUEST</button><button data-go="creator">♛ GOD SELECTION</button><button data-go="creator">⚒ ARMORY & SKINS</button><button data-go="vault">✧ ABILITY FORGE</button><button id="gf36-friends-open" type="button">♙ FRIENDS & TEAMS</button></div><div class="gf39-versus" aria-hidden="true"><span class="gf39-blue">THE DAWNBRINGERS</span><strong>VS</strong><span class="gf39-red">THE DREADBOUND</span></div><div class="mode"><div class="small" style="color:#83d9e5;margin-bottom:9px">TWO KINGDOMS. ONE VICTOR.</div><h2>BATTLE BEFORE DAWN</h2><p class="note">BUILD YOUR GOD · COMMAND YOUR TEAM<br>THREE LANES · NINE TOWERS PER SIDE · TITAN BOSS</p><button data-go="modes">⚔ ENTER THE BATTLE</button><button type="button" id="gf36-install" style="margin-top:9px;background:#132936">↓ INSTALL FOR OFFLINE PLAY</button><div id="gf36-update" class="small" style="margin-top:10px;letter-spacing:0;color:#9ec6d0">Connect once to cache game assets; online visits check for updates.</div></div><div class="gf40-footer"><span>GODFORGED · CONQUEST</span><span>CHOOSE YOUR SIDE · FORGE YOUR LEGEND</span><button data-go="creator">CUSTOMIZE GOD</button></div></section>
+<section id="home" class="screen active">
+<div class="gf41-stage">
+ <div class="gf41-art"></div>
+ <header class="gf41-top">
+  <button class="gf41-profile" data-go="creator" aria-label="Customize your god"><span class="gf41-avatar">♛</span><span><b id="gf41-name">YOUR GOD</b><small>GODFORGED · WARRIOR</small></span></button>
+  <div class="gf41-brand"><strong>GODFORGED</strong><span>A GOD'S ARENA</span></div>
+  <div class="gf41-account"><span class="gf41-coin">◉ <b id="gf41-gold">0</b></span><span class="gf41-gems">◆ <b>—</b></span><button class="gf41-settings" id="gf41-settings" type="button" aria-label="Game settings">⚙</button></div>
+ </header>
+ <nav class="gf41-sidebar" aria-label="Main game menu">
+  <button data-go="modes" class="gf41-active"><span>⚔</span> PLAY</button>
+  <button data-go="creator"><span>♛</span> GODS</button>
+  <button data-go="creator"><span>⚒</span> LOADOUTS</button>
+  <button id="gf41-pass" type="button"><span>♜</span> BATTLE PASS</button>
+  <button id="gf41-store" type="button"><span>🛒</span> STORE</button>
+  <button id="gf36-friends-open" type="button"><span>♟</span> FRIENDS <small>● INVITE TEAM</small></button>
+ </nav>
+ <div class="gf41-versus" aria-hidden="true"><span>THE DAWNBRINGERS</span><b>VS</b><span>THE DREADBOUND</span></div>
+ <div class="gf41-action">
+  <button class="gf41-play" data-go="modes">PLAY</button>
+  <div class="gf41-modes"><button data-go="modes" data-choose-mode="Conquest Training" class="gf41-selected">CONQUEST</button><button data-go="modes" data-choose-mode="Combat Arena">ARENA</button><button data-go="modes" data-choose-mode="Jungle Expedition">CUSTOM</button></div>
+ </div>
+ <div class="gf41-bottom"><span>GODFORGED · BATTLE BEFORE DAWN</span><button id="gf36-install" type="button">↓ INSTALL</button><span id="gf36-update">PHASE 41 · CHECKING FOR UPDATES</span></div>
+ <div id="gf41-notice" class="gf41-notice" role="status" aria-live="polite"></div>
+</div></section>
 <section id="modes" class="screen panel"><button class="back" data-go="home">← HOME</button><div class="mode-grid"><h1>CHOOSE YOUR BATTLE</h1><p class="note">Select a playable training scenario. Online matchmaking and full 5v5 are not yet implemented.</p><div class="mode-cards"><button class="mode-card" data-mode="Conquest Training">⚔<strong>CONQUEST TRAINING</strong><span>Three haunted lanes · towers · minions · Titan</span></button><button class="mode-card" data-mode="Jungle Expedition">🌲<strong>JUNGLE EXPEDITION</strong><span>Explore Witchwood and practice combat</span></button><button class="mode-card" data-mode="Combat Arena">✦<strong>COMBAT ARENA</strong><span>Practice weapon combos and elemental powers</span></button></div><p id="mode-choice" class="note">Selected: Conquest Training</p><div class="gf36-team-preview"><strong>TEAM ASSIGNMENTS</strong><p>Blue: You · Aegis · Ember</p><p>Red: Riven · Nyx · Thorn</p><button type="button" id="gf36-team-button">FRIENDS / WHO'S ON WHAT TEAM?</button><small>Friends are planned for future online play. Current battles use AI.</small></div><button class="save" id="launch-mode">ENTER WITCHWOOD</button></div></section>
 <section id="vault" class="screen panel"><button class="back" data-go="home">← HOME</button><div class="vault-wrap"><h1>ABILITY VAULT</h1><p class="note">Equip three power abilities and one utility ability. Your choices change the attack effects used in training.</p><div id="ability-slots"></div><button class="save" id="vault-save">SAVE ABILITIES</button></div></section>
 <section id="creator" class="screen panel"><button class="back" data-go="home">← HOME</button><div class="creator"><div><h1>FORGE YOUR GOD</h1><p class="note">The same god, face, armor and colors used in your actual match. Drag to rotate.</p><div class="preview"><canvas id="portrait" style="display:none"></canvas><canvas id="gfCreatorCanvas" style="width:100%;height:100%;display:block;touch-action:none"></canvas><div class="hint">YOUR ACTUAL IN-GAME GOD · DRAG TO ROTATE</div></div></div><div><h1>BATTLE-READY GOD CUSTOMIZATION</h1><label class="field" style="margin-bottom:12px">3D GOD BODY<select id="gfCreatorModel"><option value="god_athletic">Male · Athletic</option><option value="god_muscular">Male · Muscular</option><option value="god_heavy">Male · Heavyweight</option><option value="goddess_athletic">Female · Athletic</option><option value="goddess_muscular">Female · Muscular</option><option value="goddess_heavy">Female · Heavyweight</option></select></label><div id="gfCreatorStatus" class="note">Loading actual 3D humanoid model…</div><div class="creator-tabs"><button data-tab="identity">IDENTITY</button><button data-tab="body">BODY & FACE</button><button data-tab="style">ARMOR & COLORS</button><button data-tab="combat">WEAPONS & MAGIC</button></div><div class="fields" id="fields"></div><p class="note">Armor and colors are now shared with your in-game god. Some legacy face and hair presets are not yet fully implemented.</p><button class="save" id="save">SAVE GOD & RETURN HOME</button></div></div></section>
@@ -281,4 +304,50 @@ document.getElementById('save').addEventListener('click',()=>localStorage.setIte
 #creator .preview{border:2px solid #b99863!important;box-shadow:0 0 40px #d1a15c28!important}
 #creator .creator-tabs button.selected{background:linear-gradient(120deg,#9e6834,#43314c)!important}
 @media(max-width:680px){#home header{height:55px!important;padding:7px 12px!important}#home header .logo{font-size:24px!important}#home header .small{font-size:8px!important}#home::after{top:20%!important;font-size:20px!important}#home .gf39-versus{top:15%!important;left:33%!important;width:65%!important}#home .menu{top:30%!important;left:2%!important;width:32%!important;gap:5px!important}#home .menu button{min-height:36px!important;font-size:9px!important;padding:7px 5px!important}#home .mode{bottom:10%!important;width:72%!important;padding:8px 10px!important;min-height:0!important}#home .mode h2{font-size:19px!important}#home .mode p{font-size:9px!important}#home .mode button[data-go="modes"]{font-size:14px!important;min-height:39px!important}#home .gf40-footer{font-size:8px!important;min-height:29px!important}#home .gf40-footer span:nth-child(2){display:none}}
-</style></body></html>
+</style><style>
+/* Phase 41: faithful Concept 02 fullscreen cinematic lobby. */
+#home{background:#080b15!important;overflow:hidden!important;display:none;align-items:center;justify-content:center}
+#home.active{display:flex!important}
+#home::before,#home::after{display:none!important}
+#home .gf41-stage{position:relative;aspect-ratio:599/329;width:min(100vw,182.067vh);max-height:100vh;overflow:hidden;background:#0c0e19;isolation:isolate;box-shadow:0 0 90px #000}
+#home .gf41-art{position:absolute;inset:0;background:linear-gradient(180deg,#070916b5 0%,transparent 25%,transparent 65%,#060811a6 100%),url('battle-before-dawn.svg') center/cover no-repeat;filter:saturate(1.18) contrast(1.08)}
+#home .gf41-top{position:absolute;z-index:3;inset:0 0 auto;height:13%;display:flex;align-items:center;justify-content:space-between;padding:0 2%;background:linear-gradient(#080b15d8,#080b1520);border:0!important}
+#home .gf41-profile{display:flex;align-items:center;gap:8px;background:#080b17b5;border:1px solid #8e734b;border-radius:24px;padding:4px 13px 4px 4px;color:#f7ead7;text-align:left;max-width:27%}
+#home .gf41-avatar{display:grid;place-items:center;width:35px;height:35px;border-radius:50%;border:2px solid #c89b56;background:linear-gradient(130deg,#3b2430,#a57b42);font-size:22px}
+#home .gf41-profile b{font-size:clamp(9px,1.1vw,15px);display:block}#home .gf41-profile small{font-size:clamp(6px,.65vw,10px);color:#d3c7b0}
+#home .gf41-brand{position:absolute;left:50%;top:1%;transform:translateX(-50%);display:flex;align-items:center;flex-direction:column;white-space:nowrap;text-shadow:0 3px 6px #000,0 0 15px #d7a25380}
+#home .gf41-brand strong{font:900 clamp(27px,4.1vw,64px) Georgia,serif;color:#fce3a2;-webkit-text-stroke:.6px #7b4c25;letter-spacing:-.045em;line-height:.9}
+#home .gf41-brand span{font:700 clamp(7px,.85vw,13px) Georgia,serif;color:#f8d58b;letter-spacing:.36em}
+#home .gf41-account{display:flex;align-items:center;gap:8px;color:#f8e6bc;font-size:clamp(9px,1vw,15px);white-space:nowrap}
+#home .gf41-coin,#home .gf41-gems{background:#080b17b0;padding:5px 8px;border:1px solid #7b6649;border-radius:20px}#home .gf41-coin{color:#e9b957}#home .gf41-gems{color:#bb82f8}
+#home .gf41-settings{color:#f1d4a0;font-size:24px;border:1px solid #7b6649;border-radius:50%;width:36px;height:36px;background:#090b16cc}
+#home .gf41-sidebar{position:absolute;z-index:3;top:17%;left:1.5%;width:18%;display:flex;flex-direction:column;gap:4px}
+#home .gf41-sidebar button{position:relative;display:flex;align-items:center;gap:10px;min-height:39px;width:100%;background:linear-gradient(90deg,#080a13e6,#090b17b5 75%,transparent);border:0;border-left:2px solid transparent;text-align:left;color:#fff5df;padding:7px 12px;font:800 clamp(10px,1.15vw,17px) system-ui;letter-spacing:.02em;text-shadow:0 2px 3px #000;cursor:pointer}
+#home .gf41-sidebar button span{color:#f7c879;font-size:1.2em}#home .gf41-sidebar button small{position:absolute;top:73%;left:33%;color:#8af0a5;font:600 8px system-ui}
+#home .gf41-sidebar button.gf41-active,#home .gf41-sidebar button:hover{background:linear-gradient(90deg,#81552fe6,#22151ad0 72%,transparent);border-left:3px solid #ffca76;box-shadow:inset 0 0 15px #b37b3055}
+#home .gf41-versus{position:absolute;z-index:2;top:24%;left:23%;width:74%;display:flex;justify-content:space-between;align-items:center;font:800 clamp(9px,1.3vw,17px) Georgia,serif;color:#ffe7ba;text-shadow:0 2px 9px #000,0 0 12px #000}
+#home .gf41-versus b{font-size:clamp(26px,4.1vw,55px);color:#ffd19a;text-shadow:0 0 18px #f48a4c}
+#home .gf41-action{position:absolute;z-index:4;bottom:5.5%;left:51%;transform:translateX(-50%);display:flex;align-items:center;flex-direction:column;gap:13px;width:36%}
+#home .gf41-play{width:100%;height:clamp(48px,7.1vw,92px);background:linear-gradient(180deg,#ffbd69 0%,#d7502c 15%,#931c1d 62%,#4e1019 100%);border:4px ridge #ffca75;border-radius:9px;box-shadow:0 0 0 3px #622f27,0 0 30px #ff7331a8,inset 0 0 17px #f4a45c;color:#fff2c8;text-shadow:0 3px 3px #4c100f;font:900 clamp(28px,4.1vw,61px) Georgia,serif;letter-spacing:.07em;cursor:pointer}
+#home .gf41-modes{display:flex;width:100%;gap:8px;justify-content:center}
+#home .gf41-modes button{min-width:28%;border:1px solid #b8975d;border-radius:19px;background:#090c17e6;color:#fff3db;padding:7px 9px;font:700 clamp(9px,1.05vw,15px) system-ui;cursor:pointer}
+#home .gf41-modes .gf41-selected{border-color:#ffbf67;box-shadow:0 0 12px #e78d4380;background:#57301d}
+#home .gf41-bottom{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 15px;background:#080912c9;color:#d8c19a;font:600 clamp(7px,.7vw,11px) system-ui;letter-spacing:.08em;z-index:3}
+#home .gf41-bottom button{background:none;border:1px solid #927148;color:#ffdb9e;border-radius:5px;padding:3px 9px}
+#home .gf41-notice{position:absolute;top:76%;left:25%;width:55%;text-align:center;color:#fff3d5;background:#120f1de8;border:1px solid #c29c60;padding:10px;z-index:7;display:none;font-size:13px}
+#home .gf41-notice.show{display:block}
+@media(max-width:700px){#home .gf41-profile{gap:3px;padding:2px 4px}#home .gf41-avatar{width:22px;height:22px;font-size:14px}#home .gf41-brand strong{font-size:clamp(15px,4vw,30px)}#home .gf41-brand span{font-size:6px}#home .gf41-account{gap:3px;font-size:8px}#home .gf41-coin,#home .gf41-gems{padding:2px 3px}#home .gf41-settings{width:23px;height:23px;font-size:15px}#home .gf41-sidebar{top:18%;gap:0}#home .gf41-sidebar button{min-height:clamp(19px,5vw,34px);font-size:clamp(7px,1.8vw,11px);gap:3px;padding:3px 4px}#home .gf41-sidebar button small{font-size:5px}#home .gf41-versus{top:25%;font-size:7px}#home .gf41-action{gap:5px;bottom:7%}#home .gf41-play{height:clamp(34px,8vw,53px);font-size:clamp(22px,5vw,35px);border-width:2px}#home .gf41-modes{gap:2px}#home .gf41-modes button{padding:3px 2px;font-size:clamp(6px,1.7vw,9px)}#home .gf41-bottom{padding:2px 6px;font-size:6px}}
+</style>
+<script>
+(function(){
+ const stage=document.getElementById('home');
+ const name=document.getElementById('gf41-name');
+ const cfg=window.gfGetConfig?.();if(cfg?.godName&&cfg.godName!=='Unnamed God')name.textContent=cfg.godName;
+ const toast=document.getElementById('gf41-notice');
+ const notice=t=>{toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3500)};
+ document.getElementById('gf41-pass').onclick=()=>notice('BATTLE PASS IS NOT AVAILABLE YET.');
+ document.getElementById('gf41-store').onclick=()=>notice('ITEM STORE IS AVAILABLE INSIDE A MATCH. PURCHASE ITEMS IN YOUR TEAM SANCTUARY.');
+ document.getElementById('gf41-settings').onclick=()=>notice('INSTALL THE GAME USING THE BUTTON BELOW. SETTINGS PANEL COMING LATER.');
+ stage.querySelectorAll('[data-choose-mode]').forEach(b=>b.addEventListener('click',()=>{const m=b.dataset.chooseMode;const target=[...document.querySelectorAll('[data-mode]')].find(el=>el.dataset.mode===m);target?.click()}));
+})();
+</script></body></html>
