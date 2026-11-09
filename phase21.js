@@ -618,11 +618,19 @@ const GF21 = (() => {
    for(const side of [-1,1]){mesh(new T.ConeGeometry(1.3,4.5,6),armor,side*2.6,10.4,0,root).rotation.z=side*.42;mesh(new T.CylinderGeometry(.75,1.05,5.5,8),armor,side*4,5.3,0,root)}
    const weapon=mesh(new T.BoxGeometry(.7,7,.9),glow,5,4.2,1.3,root);
    const circle=mesh(new T.TorusGeometry(23,.23,7,80),glow,0,.15,0,root);circle.rotation.x=Math.PI/2;
-   const titan={friendly,x,z,root,weapon,alive:true,hp:1900,max:1900,attackClock:1.4,range:23,tier:3,kind:'titan'};
+   const leftArm=new T.Group(),rightArm=new T.Group();leftArm.position.set(-3.4,8,0);rightArm.position.set(3.4,8,0);root.add(leftArm,rightArm);
+   mesh(new T.CylinderGeometry(.85,1.2,5.5,9),armor,0,-2.5,0,leftArm);
+   mesh(new T.CylinderGeometry(.85,1.2,5.5,9),armor,0,-2.5,0,rightArm);
+   const crown=mesh(new T.TorusGeometry(2.4,.28,9,32),glow,0,11.5,0,root);crown.rotation.x=Math.PI/2;
+   const titan={friendly,x,z,root,weapon,leftArm,rightArm,crown,alive:true,hp:2600,max:2600,attackClock:1.4,skillClock:4,attackPhase:0,attackStyle:0,range:32,tier:3,kind:'titan'};
    baseStructures.push(titan);
   }
  }
- function endIfTitanDestroyed(titan){if(titan.hp>0||!titan.alive)return;titan.alive=false;titan.root.visible=false;matchEnded=true;$('status').textContent=titan.friendly?'DEFEAT · YOUR TITAN HAS FALLEN':'VICTORY · ENEMY TITAN DEFEATED'}
+ function endIfTitanDestroyed(titan){if(titan.hp>0||!titan.alive)return;titan.alive=false;titan.root.visible=false;matchEnded=true;active=false;
+ const victory=!titan.friendly;$('status').textContent=victory?'VICTORY · ENEMY TITAN DEFEATED':'DEFEAT · YOUR TITAN HAS FALLEN';
+ let overlay=document.getElementById('gf43-match-end');if(!overlay){overlay=document.createElement('div');overlay.id='gf43-match-end';overlay.style.cssText='position:absolute;inset:0;z-index:999;display:grid;place-content:center;gap:18px;text-align:center;background:radial-gradient(ellipse,#20213deb,#05060afa);color:#ffe1a5;font:900 clamp(32px,7vw,80px) Georgia,serif;text-shadow:0 0 30px #ef9b51';overlay.innerHTML='<div id="gf43-result"></div><button id="gf43-return" style="font:800 22px system-ui;padding:18px 36px;background:#8a3d22;color:white;border:2px solid #e9ba72;border-radius:8px">RETURN TO HOME</button>';document.getElementById('battle').append(overlay);overlay.querySelector('#gf43-return').onclick=()=>{overlay.remove();window.gfNavigate?.('home')};}
+ overlay.querySelector('#gf43-result').textContent=victory?'VICTORY — TITAN SLAIN':'DEFEAT — TITAN FALLEN';overlay.style.display='grid';
+ }
  function updateDefenses(dt,now){
   if(matchEnded)return;
   const targets=[...mobs.filter(m=>m.alive&&(m.kind==='ally'||m.kind==='minion')),...bots.filter(b=>b.alive)];
@@ -646,16 +654,37 @@ const GF21 = (() => {
   }
   for(const titan of baseStructures){
    if(!titan.alive)continue;
-   titan.attackClock-=dt;
-   const target=targets.find(o=>o.friendly!==titan.friendly&&Math.hypot(o.x-titan.x,o.z-titan.z)<titan.range);
+   const elapsed=now*.001, enraged=titan.hp<titan.max*.45;
+   titan.attackClock-=dt;titan.skillClock-=dt;
+   const hostiles=targets.filter(o=>o.friendly!==titan.friendly&&Math.hypot(o.x-titan.x,o.z-titan.z)<titan.range);
    const player=!titan.friendly&&hp>0&&Math.hypot(position.x-titan.x,position.z-titan.z)<titan.range;
-   if(titan.attackClock<=0&&(target||player)){
-    titan.attackClock=2.1;titan.weapon.rotation.z=-1.15;
-    const dmg=38;
-    if(target){target.hp-=dmg;if(target.hp<=0){if(target.kind==='ally'||target.kind==='minion')finishMob(target,false);else{target.alive=false;target.root.visible=false;target.respawnAt=now+11000}}}
-    else hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
-   }else titan.weapon.rotation.z+=(0-titan.weapon.rotation.z)*Math.min(1,dt*5);
-   endIfTitanDestroyed(titan)
+   const target=player?{x:position.x,z:position.z,player:true}:hostiles[0];
+   titan.root.position.y=Math.sin(elapsed*2.6)*.3;
+   titan.root.rotation.y=target?Math.atan2(target.x-titan.x,target.z-titan.z)*.3:Math.sin(elapsed*.7)*.1;
+   titan.crown.rotation.z+=dt*(enraged?4:1.8);
+   titan.leftArm.rotation.x=Math.sin(elapsed*(enraged?6:3))*.4;
+   titan.rightArm.rotation.x=-Math.sin(elapsed*(enraged?6:3))*.55;
+   titan.weapon.rotation.z=Math.sin(elapsed*(enraged?8:4))*(enraged?1.5:.85);
+   if(target&&titan.attackClock<=0){
+    titan.attackClock=enraged?.85:1.5;titan.attackPhase=now;titan.attackStyle=(titan.attackStyle+1)%3;
+    const damage=enraged?70:52;
+    if(target.player)hp=Math.max(0,hp-(now<shieldUntil?damage*.25:damage));
+    else {target.hp-=damage;if(target.hp<=0){if(target.kind==='ally'||target.kind==='minion')finishMob(target,false);else{target.alive=false;target.root.visible=false;target.respawnAt=now+11000}}}
+    const pulse=new T.Mesh(new T.RingGeometry(1.8,5.5,40),new T.MeshBasicMaterial({color:enraged?'#ff4225':'#f5a35d',transparent:true,opacity:.82,side:T.DoubleSide,depthWrite:false}));
+    pulse.position.set(titan.x,.25,titan.z);pulse.rotation.x=-Math.PI/2;scene.add(pulse);effects.push({mesh:pulse,ttl:.55,max:.55});
+   }
+   if(target&&titan.skillClock<=0){
+    titan.skillClock=enraged?3.2:5.5;
+    const style=titan.attackStyle;
+    const centerX=style===0?titan.x:target.x,centerZ=style===0?titan.z:target.z;
+    const radius=style===0?16:style===1?9:12,damage=style===2?85:65;
+    const aoe=new T.Mesh(new T.RingGeometry(radius-1,radius,64),new T.MeshBasicMaterial({color:style===0?'#f75c3e':style===1?'#eac36b':'#ba6eff',transparent:true,opacity:.9,side:T.DoubleSide,depthWrite:false}));
+    aoe.rotation.x=-Math.PI/2;aoe.position.set(centerX,.23,centerZ);scene.add(aoe);effects.push({mesh:aoe,ttl:1.1,max:1.1});
+    if(player&&Math.hypot(position.x-centerX,position.z-centerZ)<radius)hp=Math.max(0,hp-(now<shieldUntil?damage*.25:damage));
+    for(const o of hostiles)if(Math.hypot(o.x-centerX,o.z-centerZ)<radius){o.hp-=damage;if(o.hp<=0){if(o.kind==='ally'||o.kind==='minion')finishMob(o,false);else{o.alive=false;o.root.visible=false;o.respawnAt=now+11000}}}
+    $('status').textContent=['TITAN FURY · SHOCKWAVE','TITAN WRATH · METEOR STRIKE','TITAN RAGE · VOID BURST'][style];
+   }
+   endIfTitanDestroyed(titan);
   }
   // Sanctuary water is lethal to enemies, but safe for allied upgrades.
   for(const b of bots)if(b.alive&&inSanctuary(b.x,b.z,!b.friendly)){b.hp=0;b.alive=false;b.root.visible=false;b.respawnAt=now+11000}
