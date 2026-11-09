@@ -1,7 +1,7 @@
 // Godforged Phase 21: shared Z-up GLB character pipeline and rebuilt 3D Witchwood.
 const GF21 = (() => {
  let T, Loader, renderer, scene, camera, hero, modelRoot, animationFrame, prev=0, yaw=0, pitch=.16;
- let weaponRig=null,weaponGrip=null,weaponAttackAge=0,weaponAttackStep=1,activeWeapon='',active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], effects=[], strike=0, attackTime=0, look=null;
+ let weaponRig=null,weaponGrip=null,weaponAttackAge=0,weaponAttackStep=1,activeWeapon='',active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], demonDogs=[], effects=[], strike=0, attackTime=0, look=null;
  let matchStartedAt=0,matchElapsed=0,matchEnded=false,baseStructures=[],sanctuaries=[],bots=[],hp=350,maxHp=350,gold=500,xp=0,level=1,kills=0,lastWave=0,recallUntil=0,respawnAt=0,shopOpen=false,baseFountain=null,baseHud=null,gameTime=0,shopPanel=null,utilityCooldown=0,shieldUntil=0,stunUntil=0,ownedItems={},powerBonus=0,armorBonus=0;
  const canvas=document.createElement('canvas');canvas.id='gf21Battle';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:none';
  document.getElementById('battle').insertBefore(canvas,document.getElementById('battle').firstChild);
@@ -416,6 +416,7 @@ const GF21 = (() => {
  function updateBattleSystems(dt,time){gameTime+=dt;matchElapsed+=dt;if(!matchEnded&&matchElapsed>=30&&(lastWave===0||matchElapsed-lastWave>=27)){lastWave=matchElapsed;spawnWave();$('status').textContent='3 lanes · 5 troops and 1 Vanguard per wave'}
  if(!matchEnded)updateGods(dt,time);
  updateDefenses(dt,time);
+ updateDemonDogs(dt,time);
  const takeDamage=(n)=>{if(hp<=0)return;if(time<shieldUntil)n*=.25;hp=Math.max(0,hp-n);if(n>0)recallUntil=0};
  if(hp>0){if(inSanctuary(position.x,position.z,true))hp=Math.min(maxHp,hp+dt*90);else hp=Math.min(maxHp,hp+dt*.65);if(recallUntil&&time>=recallUntil){position.x=laneX(0,16);position.z=16;recallUntil=0;$('status').textContent='Returned to sanctuary · healing'}}else if(time>respawnAt){hp=maxHp;respawnAt=0;position.x=laneX(0,16);position.z=16;$('status').textContent='Respawned at sanctuary'}
  for(let m of mobs){if(!m.alive)continue;if(m.kind==='ally'||m.kind==='minion'){if(time<(m.stunnedUntil||0))continue;const dir=m.friendly?1:-1,range=m.role==='archer'?11:m.role==='vanguard'?4.4:3.8;let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range;
@@ -429,6 +430,59 @@ const GF21 = (() => {
  for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot){const t=1-m.attackPose/.42;m.weaponPivot.rotation.z=m.role==='archer'?Math.sin(t*Math.PI)*.5:-Math.sin(t*Math.PI)*(m.role==='vanguard'?1.6:1.25);if(m.arrow)m.arrow.position.z=.2-Math.sin(t*Math.PI)*.35;}m.root.rotation.y=Math.sin((1-m.attackPose/.42)*Math.PI)*.22*(m.friendly?1:-1)}}
  if(hp<=0&&!respawnAt){respawnAt=time+7000;$('status').textContent='Defeated · respawning in 7 seconds'}
  if(baseHud){$('gf35Timer').textContent=matchEnded?'MATCH OVER':matchElapsed<30?'WAVE 0:'+String(Math.ceil(30-matchElapsed)).padStart(2,'0'):'NEXT '+Math.max(0,Math.ceil(27-(matchElapsed-lastWave)))+'s';$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
+ }
+
+ // Neutral jungle guardians: stay inside visible grass borders, chase nearby gods,
+ // deal more damage than lane minions, and respawn after defeat.
+ function makeDemonDogs(){
+  const dark=material('#24252c'),hide=material('#43343a'),fang=material('#e8d6c4'),glow=new T.MeshStandardMaterial({color:'#f05e55',emissive:'#d51e23',emissiveIntensity:2});
+  for(const side of [-1,1])for(const z of [215,405]){
+   const x=side*46,radius=18;
+   const zone=mesh(new T.CircleGeometry(radius,40),new T.MeshStandardMaterial({color:'#23432b',transparent:true,opacity:.76,side:T.DoubleSide}),x,.06,z);zone.rotation.x=-Math.PI/2;
+   const rim=mesh(new T.TorusGeometry(radius,.32,6,64),material('#8e6b48'),x,.15,z);rim.rotation.x=Math.PI/2;
+   for(let i=0;i<28;i++){const a=i*Math.PI*2/28,rr=radius-2.3;const grass=mesh(new T.ConeGeometry(.4,1.7,4),material(i%2?'#385e39':'#4b7744'),x+Math.cos(a)*rr,.8,z+Math.sin(a)*rr);grass.rotation.z=Math.sin(a)*.24}
+   for(let i=0;i<2;i++){
+    const root=new T.Group();scene.add(root);
+    const body=mesh(new T.SphereGeometry(1.05,10,8),hide,0,1.1,0,root);body.scale.set(.72,.75,1.5);
+    mesh(new T.SphereGeometry(.64,10,8),dark,0,1.35,1.23,root);
+    for(const sx of [-1,1]){const ear=mesh(new T.ConeGeometry(.23,.7,5),dark,sx*.42,1.99,1.2,root);ear.rotation.z=sx*.2;mesh(new T.SphereGeometry(.13,7,6),glow,sx*.28,1.52,1.77,root);
+     for(const fz of [-.85,.85])mesh(new T.CylinderGeometry(.2,.24,.9,6),dark,sx*.49,.46,fz,root);
+    }
+    for(const sx of [-1,1])mesh(new T.ConeGeometry(.13,.43,5),fang,sx*.25,1.03,1.8,root).rotation.x=Math.PI;
+    for(let k=0;k<4;k++)mesh(new T.ConeGeometry(.29,.55,5),dark,0,1.95,-.6+k*.36,root);
+    const dx=(i===0?-4:4),dz=(i===0?-3:3);
+    demonDogs.push({root,homeX:x,homeZ:z,x:x+dx,z:z+dz,radius:radius-2.6,hp:145,max:145,damage:10,alive:true,respawnAt:0,attackClock:.6,attackPose:0});
+   }
+  }
+ }
+ function updateDemonDogs(dt,now){
+  for(const dog of demonDogs){
+   if(!dog.alive){if(now<dog.respawnAt)continue;dog.alive=true;dog.hp=dog.max;dog.x=dog.homeX;dog.z=dog.homeZ;dog.root.visible=true}
+   let target=null,dist=999;
+   if(hp>0){const d=Math.hypot(position.x-dog.x,position.z-dog.z);if(d<dist&&Math.hypot(position.x-dog.homeX,position.z-dog.homeZ)<dog.radius+3){target={x:position.x,z:position.z,player:true};dist=d}}
+   for(const b of bots)if(b.alive&&Math.hypot(b.x-dog.homeX,b.z-dog.homeZ)<dog.radius+2){const d=Math.hypot(b.x-dog.x,b.z-dog.z);if(d<dist){target=b;dist=d}}
+   let tx=target?target.x:dog.homeX+Math.sin(now*.0007+dog.homeZ)*5,tz=target?target.z:dog.homeZ+Math.cos(now*.0007+dog.homeX)*5;
+   const distance=Math.hypot(tx-dog.x,tz-dog.z);
+   if(distance>2.8){const move=Math.min(distance-2.5,dt*(target?5.7:2));dog.x+=(tx-dog.x)/distance*move;dog.z+=(tz-dog.z)/distance*move}
+   const homeDistance=Math.hypot(dog.x-dog.homeX,dog.z-dog.homeZ);
+   if(homeDistance>dog.radius){dog.x=dog.homeX+(dog.x-dog.homeX)/homeDistance*dog.radius;dog.z=dog.homeZ+(dog.z-dog.homeZ)/homeDistance*dog.radius}
+   dog.attackClock-=dt;
+   if(target&&dist<3.5&&dog.attackClock<=0){dog.attackClock=1.45;dog.attackPose=.35;
+    if(target.player)hp=Math.max(0,hp-(now<shieldUntil?dog.damage*.25:dog.damage));
+    else{target.hp=Math.max(0,target.hp-dog.damage);if(!target.hp){target.alive=false;target.root.visible=false;target.respawnAt=now+11000}}
+   }
+   dog.attackPose=Math.max(0,dog.attackPose-dt);
+   dog.root.position.set(dog.x,Math.sin(now*.009+dog.homeZ)*.07+(dog.attackPose?Math.sin(dog.attackPose*9)*.35:0),dog.z);
+   if(distance>.01)dog.root.rotation.y=Math.atan2(tx-dog.x,tz-dog.z);
+  }
+ }
+ function damageDemonDog(x,z,damage,reach=5){
+  let closest=null,dist=reach;
+  for(const dog of demonDogs)if(dog.alive){const d=Math.hypot(dog.x-x,dog.z-z);if(d<dist){closest=dog;dist=d}}
+  if(!closest)return false;
+  closest.hp-=damage;
+  if(closest.hp<=0){closest.alive=false;closest.root.visible=false;closest.respawnAt=performance.now()+30000;gold+=35;xp+=40;$('status').textContent='DEMON HOUND SLAIN · +40 XP · +35 GOLD'}
+  return true;
  }
  function groundHeight(x,z){return Math.sin(x*.07)*.12+Math.sin(z*.045)*.11}
  function makeTerrain(){
@@ -451,6 +505,7 @@ const GF21 = (() => {
   phase25Landscape();
   cobblestoneLanes();
   buildBases();
+  makeDemonDogs();
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
  function applyStyle(root){window.GF22Style?.(root,window.gfGetConfig?.()||{},T);
@@ -501,7 +556,7 @@ const GF21 = (() => {
   }
   let hp=tower?220:65;return {root,x,z,hp,max:hp,kind,alive:true,friendly,speed:0};
  }
- function spawn(){for(let side of [true,false])for(let lane=-1;lane<=1;lane++)for(let tier=0;tier<3;tier++){const z=side?[182,109,55][tier]:[450,523,577][tier];const x=laneX(lane,z),m=createMob(x,z,'tower');m.friendly=side;m.lane=lane;m.tier=tier;m.max=m.hp=[320,510,780][tier];m.root.scale.setScalar([.85,1.1,1.35][tier]);m.root.traverse(o=>{if(o.isMesh&&o.material?.emissive)o.material.emissiveIntensity=1+tier*.45});mobs.push(m);towerZone(x,z,19+tier*2,side,tier)}buildFinalTitans();for(let b of buffs){let c=b.kind==='POWER'?'#e94849':b.kind==='SPEED'?'#40bbf5':'#70e29c';b.orb=mesh(new T.IcosahedronGeometry(1.6,1),material(c,.2),b.x,2.4,b.z);b.orb.userData.kind=b.kind}}
+ function spawn(){for(let side of [true,false])for(let lane=-1;lane<=1;lane++)for(let tier=0;tier<3;tier++){const z=side?[210,123,57][tier]:[434,521,587][tier];const x=laneX(lane,z),m=createMob(x,z,'tower');m.friendly=side;m.lane=lane;m.tier=tier;m.max=m.hp=[320,510,780][tier];m.root.scale.setScalar([.85,1.1,1.35][tier]);m.root.traverse(o=>{if(o.isMesh&&o.material?.emissive)o.material.emissiveIntensity=1+tier*.45});mobs.push(m);towerZone(x,z,19+tier*2,side,tier)}buildFinalTitans();for(let b of buffs){let c=b.kind==='POWER'?'#e94849':b.kind==='SPEED'?'#40bbf5':'#70e29c';b.orb=mesh(new T.IcosahedronGeometry(1.6,1),material(c,.2),b.x,2.4,b.z);b.orb.userData.kind=b.kind}}
 
  function laneApproach(lane,z,friendly){
   const t=friendly?Math.min(1,Math.max(0,(z-18)/75)):Math.min(1,Math.max(0,(628-z)/75));
@@ -559,7 +614,7 @@ const GF21 = (() => {
   for(const b of bots)if(b.alive&&inSanctuary(b.x,b.z,!b.friendly)){b.hp=0;b.alive=false;b.root.visible=false;b.respawnAt=now+11000}
   if(hp>0&&inSanctuary(position.x,position.z,false)){hp=0;$('status').textContent='ENEMY SANCTUARY · LETHAL WATERS'}
  }
- function collision(x,z){if(z<55||z>577)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<9);let crossing=[125,310,510].some(a=>Math.abs(z-a)<5&&Math.abs(x)<103);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<8);return !(nearest||crossing||camp)}
+ function collision(x,z){if(z<55||z>589)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);return !(nearest||crossing||camp||grass)}
 
  // Animated physical weapon, attached to the character's hand position, not the VFX.
  function buildPhysicalWeapon(type){
@@ -620,6 +675,7 @@ const GF21 = (() => {
   let special=null;
   for(const bot of bots)if(bot.alive&&!bot.friendly){const d=Math.hypot(bot.x-position.x,bot.z-position.z);if(d<dist){const facing=((bot.x-position.x)*fX+(bot.z-position.z)*fZ)/Math.max(.001,d);if(facing>.24){special=bot;best=null;dist=d}}}
   for(const titan of baseStructures)if(titan.alive&&!titan.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&!m.friendly&&m.lane===Math.round(position.x/95))){const d=Math.hypot(titan.x-position.x,titan.z-position.z);if(d<dist){special=titan;best=null;dist=d}}
+  if(!best&&!special)damageDemonDog(position.x+fX*3,position.z+fZ*3,(strike===3?44:25)+powerBonus,5);
   combatForge?.attack(weapon,strike,best?{x:best.x,z:best.z}:special?{x:special.x,z:special.z}:null);
   if(special){special.hp-=(strike===3?55:30)+powerBonus*.4;if(special.kind==='titan')endIfTitanDestroyed(special);else if(special.hp<=0){special.alive=false;special.root.visible=false;special.respawnAt=performance.now()+11000;gainGold(85);kills++}
    $('status').textContent=(special.name||'TITAN')+' '+Math.max(0,Math.ceil(special.hp))+' HP';
@@ -662,6 +718,7 @@ const GF21 = (() => {
    if(enemy.kind==='titan')endIfTitanDestroyed(enemy);
    else if(enemy.hp<=0){enemy.alive=false;enemy.root.visible=false;enemy.respawnAt=now+11000;gold+=85;kills++}
   }
+  damageDemonDog(tx,tz,42+powerBonus,7);
   $('status').textContent=name.toUpperCase()+' · '+type+' power';
  }
  function frame(time){requestAnimationFrame(frame);for(const t of summons){if(time>t.until){scene.remove(t.mesh);continue}if(time<t.next)continue;t.next=time+800;let target=mobs.find(m=>m.alive&&!m.friendly&&Math.hypot(m.x-t.x,m.z-t.z)<14);if(target){target.hp-=18+powerBonus*.3;if(target.hp<=0){target.alive=false;target.root.visible=false;gainGold(45)}}}summons=summons.filter(t=>time<t.until);if(!active||!renderer)return;let dt=Math.min(.04,(time-(prev||time))/1000);prev=time;const v=window.gfGetConfig?.();let j=window.joystick||null; // legacy joystick is lexical; bridge below supplies it.
