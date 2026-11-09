@@ -375,7 +375,7 @@ const GF21 = (() => {
    const heritage=window.GFHeritages[heritageId];
    const botConfig={heritage:heritageId,heritageArmor:heritage.armor[2][0],heritageWeapon:heritage.weapons[1][0],armorColor:heritage.metal,trimColor:heritage.color,clothColor:heritage.cloth,skin:'#ae8169',hairColor:'#30241f',sex:name==='Nyx'||name==='Ember'?'Female':'Male',body:'Athletic',heritageHelmet:true};
    window.GFGodAppearance(root,T,mesh,material,{config:botConfig,weapon:false});
-   const pivot=new T.Group();pivot.position.set(.6,1.36,.06);root.add(pivot);pivot.add(window.GFBuildHeritageWeapon(T,botConfig));
+   const pivot=new T.Group();pivot.position.set(root.userData.handX||.6,1.36,.06);root.add(pivot);pivot.add(window.GFBuildHeritageWeapon(T,botConfig));
    bots.push({name,friendly,lane,x,z,root,pivot,hp:310,max:310,alive:true,attackClock:1,attackPose:0,spellClock:4+Math.random()*4,respawnAt:0,spawnSpinUntil:performance.now()+1600});
   }
  }
@@ -656,7 +656,7 @@ const GF21 = (() => {
   activeWeapon=type+'|'+window.gfGetConfig().heritageWeapon;weaponRig=new T.Group();weaponRig.position.set(.9,2.12,.3);modelRoot.add(weaponRig);
   weaponGrip=new T.Group();weaponRig.add(weaponGrip);
   const regionalWeapon=window.GFBuildHeritageWeapon(T,window.gfGetConfig());weaponGrip.add(regionalWeapon);
-  weaponRig.position.set(.6,1.36,.06);
+  weaponRig.position.set(hero?.userData.handX||.6,1.36,.06);
 
   weaponGrip.rotation.set(0,0,-.15);
  }
@@ -667,14 +667,14 @@ const GF21 = (() => {
   weaponAttackAge+=dt;
   const duration=selected==='War Axe'?.63:selected==='Spear'?.43:.48;
   const t=Math.min(1,weaponAttackAge/duration);
-  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);weaponRig.position.z=.3;return}
+  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);weaponRig.position.z=.06;return}
   const swing=Math.sin(t*Math.PI);
   // Left, right, then overhead. Spear uses a forward thrust on the third hit.
   if(weaponAttackStep===3&&selected==='Spear'){
    weaponGrip.rotation.set(-.25-swing*.7,0,-.12);
-   weaponRig.position.z=.3+swing*2.1;
+   weaponRig.position.z=.06+swing*2.1;
   }else{
-   weaponRig.position.z=.3;
+   weaponRig.position.z=.06;
    const direction=weaponAttackStep===2?-1:1;
    weaponGrip.rotation.set(-.3-swing*.75,0,(weaponAttackStep===3?0:direction*(1.25-2.6*t)));
    weaponRig.rotation.y=direction*swing*.48;

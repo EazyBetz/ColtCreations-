@@ -136,7 +136,7 @@
   }
   // Preview weapon and combat weapon are constructed by this same function.
   if(options.weapon!==false){const w=GFBuildHeritageWeapon(T,c);w.position.set(.6,1.36,.06);w.rotation.z=-.13;figure.add(w)}
-  if(options.batch!==false)batchStatic(T,figure);root.userData.heritageKey=GFLoadoutKey(c);root.userData.heritage=c.heritage;root.userData.armor=c.heritageArmor;root.userData.weapon=c.heritageWeapon;
+  if(options.batch!==false)batchStatic(T,figure);root.userData.handX=.6*breadth;root.userData.heritageKey=GFLoadoutKey(c);root.userData.heritage=c.heritage;root.userData.armor=c.heritageArmor;root.userData.weapon=c.heritageWeapon;
   return root;
  };
 })();
