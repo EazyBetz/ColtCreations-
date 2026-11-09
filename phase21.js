@@ -509,6 +509,27 @@ const GF21 = (() => {
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
  function applyStyle(root){window.GF22Style?.(root,window.gfGetConfig?.()||{},T);
+  // Original godlike armor set layered over the character GLB: gold filigree,
+  // illuminated crest, sculpted shoulders, ceremonial cape and divine aura.
+  const cfg=window.gfGetConfig?.()||{},cold=cfg.weapon==='Staff'||cfg.weapon==='Spear';
+  const gold=new T.MeshStandardMaterial({color:cold?'#b5d9e9':'#d8b36c',metalness:.86,roughness:.23});
+  const obsidian=new T.MeshStandardMaterial({color:'#263143',metalness:.7,roughness:.3});
+  const divine=new T.MeshStandardMaterial({color:cold?'#78cfff':'#f8b75e',emissive:cold?'#278ce9':'#ce7425',emissiveIntensity:1.6,metalness:.4,roughness:.25});
+  const chest=mesh(new T.BoxGeometry(1.35,.67,.26),obsidian,0,2.18,.43,root);chest.rotation.x=-.14;
+  mesh(new T.OctahedronGeometry(.28,0),divine,0,2.24,.62,root);
+  for(const side of [-1,1]){
+   const shoulder=mesh(new T.SphereGeometry(.55,12,8),gold,side*.9,2.55,0,root);shoulder.scale.set(1.18,.63,.88);
+   mesh(new T.ConeGeometry(.23,.8,6),gold,side*.99,3.04,-.04,root).rotation.z=side*.4;
+   mesh(new T.BoxGeometry(.38,.65,.34),obsidian,side*.93,1.64,.06,root);
+   mesh(new T.TorusGeometry(.25,.055,5,12),divine,side*.94,1.26,.26,root);
+  }
+  mesh(new T.TorusGeometry(.55,.09,7,28),gold,0,2.99,0,root).rotation.x=Math.PI/2;
+  for(let k=0;k<5;k++){const a=(k-2)*.32;mesh(new T.ConeGeometry(.14,.5,5),gold,Math.sin(a)*.46,3.29,Math.cos(a)*.15,root)}
+  const cape=new T.Mesh(new T.PlaneGeometry(1.75,2.45,8,12),new T.MeshStandardMaterial({color:'#442c51',roughness:.87,side:T.DoubleSide}));
+  cape.position.set(0,1.58,-.57);cape.rotation.x=.16;root.add(cape);
+  const halo=mesh(new T.TorusGeometry(1.12,.055,7,42),divine,0,3.45,0,root);halo.rotation.x=Math.PI/2;
+  root.userData.godHalo=halo;
+
   // Preserve authored GLB character proportions while improving material response.
   root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;
    if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.isMeshStandardMaterial||m.isMeshPhysicalMaterial){m.roughness=Math.max(.28,Math.min(.88,m.roughness??.68));m.metalness=Math.max(0,Math.min(.62,m.metalness??.1));m.needsUpdate=true}}}
