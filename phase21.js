@@ -290,6 +290,8 @@ const GF21 = (() => {
  info.textContent=gold+' GOLD · '+(atBase?'SANCTUARY · PURCHASES ENABLED':'OUTSIDE SANCTUARY · PURCHASES LOCKED');
  info.style.color=atBase?'#85f1c2':'#ffac9c';
  shopPanel.dataset.state=gold+'|'+atBase+'|'+Object.values(ownedItems).join(',');
+ const inventory=shopPanel.querySelector('#gf39Inventory');
+ if(inventory)inventory.textContent='EQUIPPED · '+(Object.keys(ownedItems).filter(i=>ownedItems[i]).map(i=>itemTrees[i].icon+' '+itemTrees[i].name+' T'+ownedItems[i]).join('  ·  ')||'NO ITEMS');
  const grid=shopPanel.querySelector('.gf29-grid');
  grid.innerHTML=itemTrees.map((it,i)=>{
   const rank=ownedItems[i]||0,cost=rank?it.upgrade:it.cost,canBuy=rank<2&&atBase&&gold>=cost;
@@ -310,7 +312,7 @@ const GF21 = (() => {
 }
  function setupHud(){if(baseHud)return;baseHud=document.createElement('div');baseHud.id='gf27Hud';baseHud.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:6px;justify-content:center;font:700 12px system-ui;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none';baseHud.innerHTML='<span id="gf35Timer" style="background:#171b29e8;padding:7px 10px;border:1px solid #8e8bb7;border-radius:8px">WAVE 0:30</span><span id="gf27HP" style="background:#1c322dcc;padding:7px 10px;border:1px solid #68c4a2;border-radius:8px">HP 350/350</span><span id="gf27Gold" style="background:#2c251bcc;padding:7px 10px;border:1px solid #d5b86d;border-radius:8px">500 GOLD</span><span id="gf27Level" style="background:#1a2034cc;padding:7px 10px;border:1px solid #7d8dce;border-radius:8px">LV 1</span>';document.getElementById('battle').appendChild(baseHud);
  const controls=document.createElement('div');controls.id='gf27Controls';controls.style.cssText='position:absolute;top:27%;right:8px;z-index:85;display:flex;flex-direction:column;gap:8px;pointer-events:auto';controls.innerHTML='<button id="gf27Recall" style="background:#293b55ed;color:white;border:1px solid #88baff;border-radius:9px;padding:7px;font-size:11px;font-weight:700">↩ RECALL</button><button id="gf27Shop" style="background:#534020ed;color:white;border:1px solid #efc87a;border-radius:9px;padding:7px;font-size:11px;font-weight:700">⚒ SHOP</button>';document.getElementById('battle').appendChild(controls);
- shopPanel=document.createElement('div');shopPanel.id='gf29ShopPanel';shopPanel.hidden=true;shopPanel.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px"><div><h2>DIVINE ITEM FORGE</h2><div id="gf29ShopInfo"></div></div><button id="gf29Close">✕ CLOSE</button></div><p style="font-size:12px;color:#bac5cf">Six item trees · each has two tiers · purchases available at your sanctuary.</p><div class="gf29-grid"></div>';document.getElementById('battle').appendChild(shopPanel);shopPanel.querySelector('#gf29Close').onclick=()=>{shopPanel.hidden=true;$('gf27Shop').textContent='⚒ SHOP'};
+ shopPanel=document.createElement('div');shopPanel.id='gf29ShopPanel';shopPanel.hidden=true;shopPanel.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px"><div><h2>DIVINE ITEM FORGE</h2><div id="gf29ShopInfo"></div></div><button id="gf29Close">✕ CLOSE</button></div><p style="font-size:12px;color:#bac5cf">Six item trees · each has two tiers · purchases available at your sanctuary.</p><div id="gf39Inventory" style="padding:9px;margin:8px 0;background:#101a2c;border:1px solid #bfa16c;border-radius:8px;font-size:12px;color:#f7dfac">EQUIPPED · NO ITEMS</div><div class="gf29-grid"></div>';document.getElementById('battle').appendChild(shopPanel);shopPanel.querySelector('#gf29Close').onclick=()=>{shopPanel.hidden=true;$('gf27Shop').textContent='⚒ SHOP'};
  shopPanel.addEventListener('pointerdown',e=>e.stopPropagation());
  shopPanel.addEventListener('pointermove',e=>e.stopPropagation());
  shopPanel.addEventListener('pointerup',e=>e.stopPropagation());
@@ -765,7 +767,7 @@ const GF21 = (() => {
  }
   async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
  // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
- function hit(){if(!active||hp<=0)return;
+ function hit(){if(!active||hp<=0||shopPanel&&!shopPanel.hidden)return;
   recallUntil=0;strike=(strike%3)+1;attackTime=.46;weaponAttackStep=strike;weaponAttackAge=0;
   const weapon=window.gfGetConfig?.().weapon||'Greatsword';
   const reaches={Greatsword:6.1,'War Axe':5.5,Spear:7.2,Staff:6.8,'Dual Blades':4.9};
@@ -796,7 +798,7 @@ const GF21 = (() => {
  function spellPart(geometry,mat,x,y,z,group){return mesh(geometry,mat,x,y,z,group)}
  let abilityReady=[0,0,0],summons=[];
  function cast(which){
-  if(!active||hp<=0)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
+  if(!active||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
   const cfg=window.gfGetConfig?.()||{},name=cfg['ability'+(which+1)]||'Cinder Fan';const pool={Cone:['Cinder Fan','Glacier Breath','Dread Howl'],Line:['Storm Lance','Rift Spear','Solar Rail'],Placement:['Grave Circle','Forge Turret','Verdant Snare']};let type=Object.keys(pool).find(k=>pool[k].includes(name))||'Cone';abilityReady[which]=now+(type==='Placement'?11500:7000);recallUntil=0;
   const dirX=Math.sin(yaw),dirZ=Math.cos(yaw),originX=position.x,originZ=position.z;
   const distance=type==='Line'?19:type==='Cone'?11:13;
@@ -832,7 +834,7 @@ const GF21 = (() => {
  function frame(time){requestAnimationFrame(frame);for(const t of summons){if(time>t.until){scene.remove(t.mesh);continue}if(time<t.next)continue;t.next=time+800;let target=mobs.find(m=>m.alive&&!m.friendly&&Math.hypot(m.x-t.x,m.z-t.z)<14);if(target){target.hp-=18+powerBonus*.3;if(target.hp<=0){target.alive=false;target.root.visible=false;gainGold(45)}}}summons=summons.filter(t=>time<t.until);if(!active||!renderer)return;let dt=Math.min(.04,(time-(prev||time))/1000);prev=time;const v=window.gfGetConfig?.();let j=window.joystick||null; // legacy joystick is lexical; bridge below supplies it.
  const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=-input.x; // Phase 22: horizontal stick reversed; vertical unchanged
  let speed=dt*15*(time<speedBuffUntil?1.25:1)*(ownedItems[5]?1+ownedItems[5]*.08:1);let dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed,dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed;
- if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(4,Math.min(640,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
+ if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0||shopPanel&&!shopPanel.hidden){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(4,Math.min(640,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
  modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
