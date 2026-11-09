@@ -193,7 +193,7 @@ document.getElementById('save').addEventListener('click',()=>localStorage.setIte
   <label>Preferred side <select id="gf36-side"><option value="blue">Blue · Your team</option><option value="red">Red · Opponents</option></select></label>
   <button id="gf36-add">ADD TO FRIENDS LIST</button>
   <div class="gf36-roster"><div><strong style="color:#81dfff">BLUE TEAM</strong><div id="gf36-blue"></div></div><div><strong style="color:#ff9ba9">RED TEAM</strong><div id="gf36-red"></div></div></div>
-  <button id="gf36-share">SHARE GAME LINK</button>
+  <button id="gf36-share">SHARE TEAM INVITE LINK</button>
   <button id="gf36-clear">RESET FRIENDS LIST</button>
   <p id="gf36-message" style="color:#9cbbcf;font-size:12px">Names are stored on this device only. Solo games still use the five computer-controlled gods.</p>
  </div>
@@ -208,6 +208,10 @@ document.getElementById('save').addEventListener('click',()=>localStorage.setIte
  by('gf36-close').addEventListener('click',()=>modal.classList.remove('open'));
  const key='godforged_friend_plan_v1';
  const read=()=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
+ // Import a shared roster preview from an invitation link (no multiplayer server).
+ const invite=new URLSearchParams(location.search).get('teamInvite');
+ if(invite){try{const roster=JSON.parse(decodeURIComponent(invite));if(Array.isArray(roster)&&roster.length<=20){const safe=roster.filter(f=>f&&typeof f.name==='string'&&f.name.length<=24&&['blue','red'].includes(f.side)).map(f=>({name:f.name,side:f.side}));localStorage.setItem(key,JSON.stringify(safe));history.replaceState(null,'',location.pathname);setTimeout(()=>{open();by('gf36-message').textContent='Team invitation roster imported. Real-time play is not enabled yet.'},100)}}catch{}}
+
  function render(){
   const list=read();
   for(const side of ['blue','red']){
@@ -224,7 +228,7 @@ document.getElementById('save').addEventListener('click',()=>localStorage.setIte
   list.push({name,side});localStorage.setItem(key,JSON.stringify(list));by('gf36-name').value='';render();
  });
  by('gf36-clear').addEventListener('click',()=>{localStorage.removeItem(key);render()});
- by('gf36-share').addEventListener('click',async()=>{const url=location.origin+location.pathname;try{if(navigator.share)await navigator.share({title:'Godforged',text:'Try Godforged',url});else if(navigator.clipboard)await navigator.clipboard.writeText(url);by('gf36-message').textContent='Game link shared/copied. Multiplayer is not enabled yet.'}catch{}});
+ by('gf36-share').addEventListener('click',async()=>{const url=location.origin+location.pathname+'?teamInvite='+encodeURIComponent(JSON.stringify(read()));try{if(navigator.share)await navigator.share({title:'Godforged',text:'Godforged team invitation preview — multiplayer coming later',url});else if(navigator.clipboard)await navigator.clipboard.writeText(url);by('gf36-message').textContent='Team roster link shared/copied. Your friend can open it to view the planned teams. Multiplayer is not enabled yet.'}catch{}});
  const install=by('gf36-install');
  install.addEventListener('click',()=>alert('iPhone: Open this website in Safari, tap Share, then Add to Home Screen. Open the game online once and load a match to cache its 3D assets. After that, the installed game can work offline. Updates download when you reconnect.'));
  if('serviceWorker' in navigator){
