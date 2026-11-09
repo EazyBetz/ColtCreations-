@@ -1,7 +1,7 @@
 // Godforged Phase 21: shared Z-up GLB character pipeline and rebuilt 3D Witchwood.
 const GF21 = (() => {
  let T, Loader, renderer, scene, camera, hero, modelRoot, animationFrame, prev=0, yaw=0, pitch=.16;
- let active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], effects=[], strike=0, attackTime=0, look=null;
+ let weaponRig=null,weaponGrip=null,weaponAttackAge=0,weaponAttackStep=1,activeWeapon='',active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], effects=[], strike=0, attackTime=0, look=null;
  let matchStartedAt=0,matchElapsed=0,matchEnded=false,baseStructures=[],sanctuaries=[],bots=[],hp=350,maxHp=350,gold=500,xp=0,level=1,kills=0,lastWave=0,recallUntil=0,respawnAt=0,shopOpen=false,baseFountain=null,baseHud=null,gameTime=0,shopPanel=null,utilityCooldown=0,shieldUntil=0,stunUntil=0,ownedItems={},powerBonus=0,armorBonus=0;
  const canvas=document.createElement('canvas');canvas.id='gf21Battle';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:none';
  document.getElementById('battle').insertBefore(canvas,document.getElementById('battle').firstChild);
@@ -555,10 +555,50 @@ const GF21 = (() => {
   if(hp>0&&inSanctuary(position.x,position.z,false)){hp=0;$('status').textContent='ENEMY SANCTUARY · LETHAL WATERS'}
  }
  function collision(x,z){if(z<55||z>577)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<9);let crossing=[125,310,510].some(a=>Math.abs(z-a)<5&&Math.abs(x)<103);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<8);return !(nearest||crossing||camp)}
- async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
+
+ // Animated physical weapon, attached to the character's hand position, not the VFX.
+ function buildPhysicalWeapon(type){
+  if(!T||!modelRoot)return;
+  if(weaponRig){modelRoot.remove(weaponRig);weaponRig.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose()}})}
+  activeWeapon=type;weaponRig=new T.Group();weaponRig.position.set(.9,2.12,.3);modelRoot.add(weaponRig);
+  weaponGrip=new T.Group();weaponRig.add(weaponGrip);
+  const steel=new T.MeshStandardMaterial({color:'#c9d4df',metalness:.85,roughness:.22});
+  const trim=new T.MeshStandardMaterial({color:'#b78b48',metalness:.68,roughness:.28});
+  const grip=new T.MeshStandardMaterial({color:'#352b29',roughness:.85});
+  const box=(w,h,d,mat,x,y,z)=>mesh(new T.BoxGeometry(w,h,d),mat,x,y,z,weaponGrip);
+  const shaft=(h,r,mat)=>mesh(new T.CylinderGeometry(r,r,h,9),mat,0,h/2,0,weaponGrip);
+  if(type==='War Axe'){shaft(2.8,.095,grip);box(1.35,.83,.25,steel,.48,2.35,0);box(.6,.14,.4,trim,0,1.8,0)}
+  else if(type==='Spear'){shaft(3.5,.065,grip);mesh(new T.ConeGeometry(.27,.85,7),steel,0,3.87,0,weaponGrip);box(.28,.12,.32,trim,0,3.38,0)}
+  else if(type==='Staff'){shaft(3.4,.13,grip);mesh(new T.OctahedronGeometry(.42,1),new T.MeshStandardMaterial({color:'#83baff',emissive:'#306bcd',emissiveIntensity:1.1}),0,3.7,0,weaponGrip);box(.5,.12,.5,trim,0,3.1,0)}
+  else if(type==='Dual Blades'){for(const side of [-1,1]){box(.1,1.45,.19,steel,side*.42,1.05,0);box(.38,.1,.25,trim,side*.42,.3,0)}}
+  else {shaft(.95,.11,grip);box(.75,.13,.34,trim,0,.9,0);box(type==='Greatsword'?.23:.18,type==='Greatsword'?2.75:2.15,.22,steel,0,type==='Greatsword'?2.33:2.05,0);mesh(new T.ConeGeometry(.2,.55,4),steel,0,type==='Greatsword'?3.95:3.42,0,weaponGrip)}
+  weaponGrip.rotation.set(0,0,-.15);
+ }
+ function animatePhysicalWeapon(dt){
+  const selected=window.gfGetConfig?.().weapon||'Greatsword';
+  if(selected!==activeWeapon)buildPhysicalWeapon(selected);
+  if(!weaponGrip)return;
+  weaponAttackAge+=dt;
+  const duration=selected==='War Axe'?.63:selected==='Spear'?.43:.48;
+  const t=Math.min(1,weaponAttackAge/duration);
+  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);return}
+  const swing=Math.sin(t*Math.PI);
+  // Left, right, then overhead. Spear uses a forward thrust on the third hit.
+  if(weaponAttackStep===3&&selected==='Spear'){
+   weaponGrip.rotation.set(-.25-swing*.7,0,-.12);
+   weaponRig.position.z=.3+swing*2.1;
+  }else{
+   weaponRig.position.z=.3;
+   const direction=weaponAttackStep===2?-1:1;
+   weaponGrip.rotation.set(-.3-swing*.75,0,(weaponAttackStep===3?0:direction*(1.25-2.6*t)));
+   weaponRig.rotation.y=direction*swing*.48;
+   if(weaponAttackStep===3)weaponGrip.rotation.x=-1.4+2.6*t;
+  }
+ }
+  async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
  // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
  function hit(){if(!active||hp<=0)return;
-  recallUntil=0;strike=(strike%3)+1;attackTime=.46;
+  recallUntil=0;strike=(strike%3)+1;attackTime=.46;weaponAttackStep=strike;weaponAttackAge=0;
   const weapon=window.gfGetConfig?.().weapon||'Greatsword';
   const reaches={Greatsword:6.1,'War Axe':5.5,Spear:7.2,Staff:6.8,'Dual Blades':4.9};
   let best=null,dist=reaches[weapon]||5.8;
@@ -623,7 +663,7 @@ const GF21 = (() => {
  const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=-input.x; // Phase 22: horizontal stick reversed; vertical unchanged
  let speed=dt*15*(time<speedBuffUntil?1.25:1)*(ownedItems[5]?1+ownedItems[5]*.08:1);let dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed,dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed;
  if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(4,Math.min(640,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
- modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
+ modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
  combatForge?.tick(dt);
