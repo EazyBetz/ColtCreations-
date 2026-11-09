@@ -453,10 +453,10 @@ const GF21 = (() => {
  const barrier=blocking&&dir*(blocking.z-m.z)>-3?blocking:null;
  const barrierDistance=barrier?Math.hypot(barrier.x-m.x,barrier.z-m.z):Infinity;
  let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);
- if(!target&&barrier&&barrierDistance<Math.max(range+3,13))target=barrier;
+ if(!target&&barrier&&barrierDistance<Math.max(range+5,13))target=barrier;
  let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range&&!target;
  if(!target&&!heroTarget){const nextZ=m.z+dir*dt*m.speed;
- m.z=barrier?dir>0?Math.min(nextZ,barrier.z-7):Math.max(nextZ,barrier.z+7):nextZ;
+ m.z=barrier?dir>0?Math.min(nextZ,barrier.z-3):Math.max(nextZ,barrier.z+3):nextZ;
  m.x=laneApproach(m.lane??0,m.z,m.friendly);m.root.position.set(m.x,0,m.z);if(time<(m.spawnSpinUntil||0))m.root.rotation.y+=dt*12}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?2.1:m.role==='vanguard'?1.7:1.35;let damage=m.damage||4;m.attackPose=.42;if(m.role==='archer'){
   let aim=target?{x:target.x,y:2.3,z:target.z,target}:{x:position.x,y:2.2,z:position.z,hero:true};
   fireProjectile({x:m.x,y:2.8,z:m.z},aim,damage,'arrow',m);
@@ -636,7 +636,6 @@ const GF21 = (() => {
   const targets=[...mobs.filter(m=>m.alive&&(m.kind==='ally'||m.kind==='minion')),...bots.filter(b=>b.alive)];
   for(const tower of mobs.filter(m=>m.alive&&m.kind==='tower')){
    tower.attackClock=(tower.attackClock||0)-dt;
-   if(tower.attackClock>0)continue;
    const range=22+(tower.tier||0)*2;
    tower.towerId??=tower.lane+'-'+tower.tier+'-'+tower.friendly;
    const eligible=targets.filter(o=>o.friendly!==tower.friendly&&Math.hypot(o.x-tower.x,o.z-tower.z)<range);
@@ -647,6 +646,7 @@ const GF21 = (() => {
    for(const o of eligible){o.enteredTowerAt??={};o.enteredTowerAt[tower.towerId]??=now}
    if(player)tower.playerEnteredAt??=now;else tower.playerEnteredAt=null;
    if(!enemy&&tower.targetLock!=='player')continue;
+   if(tower.attackClock>0)continue;
    tower.attackClock=[1.75,1.55,1.35][tower.tier||0];
    const dmg=[24,34,48][tower.tier||0];
    const dest=enemy?{x:enemy.x,y:2.3,z:enemy.z,target:enemy}:{x:position.x,y:2.2,z:position.z,hero:true};
