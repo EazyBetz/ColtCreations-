@@ -336,7 +336,7 @@ const GF21 = (() => {
  function equipTroop(m,role,lane){
   m.role=role;m.lane=lane;m.attackClock=.3+Math.random()*.4;m.attackPose=0;
   m.speed=role==='vanguard'?4.7:role==='archer'?5.5:6.2;
-  m.hp=m.max=role==='vanguard'?170:role==='archer'?65:78;
+  m.hp=m.max=role==='vanguard'?340:role==='archer'?145:175;
   m.damage=role==='vanguard'?8:role==='archer'?3:4;
   m.xpReward=role==='vanguard'?75:25;m.goldReward=role==='vanguard'?45:14;
   m.root.scale.setScalar(role==='vanguard'?1.12:.72);
@@ -448,11 +448,19 @@ const GF21 = (() => {
  updateDemonDogs(dt,time);
  const takeDamage=(n)=>{if(hp<=0)return;if(time<shieldUntil)n*=.25;hp=Math.max(0,hp-n);if(n>0)recallUntil=0};
  if(hp>0){if(inSanctuary(position.x,position.z,true))hp=Math.min(maxHp,hp+dt*90);else hp=Math.min(maxHp,hp+dt*.65);if(recallUntil&&time>=recallUntil){position.x=laneX(0,16);position.z=16;recallUntil=0;$('status').textContent='Returned to sanctuary · healing'}}else if(time>respawnAt){hp=maxHp;respawnAt=0;position.x=laneX(0,16);position.z=16;$('status').textContent='Respawned at sanctuary'}
- for(let m of mobs){if(!m.alive)continue;if(m.kind==='ally'||m.kind==='minion'){if(time<(m.stunnedUntil||0))continue;const dir=m.friendly?1:-1,range=m.role==='archer'?11:m.role==='vanguard'?4.4:3.8;let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range;
- if(!target&&!heroTarget){m.z+=dir*dt*m.speed;m.x=laneApproach(m.lane??0,m.z,m.friendly);m.root.position.set(m.x,0,m.z);if(time<(m.spawnSpinUntil||0))m.root.rotation.y+=dt*12}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?2.1:m.role==='vanguard'?1.7:1.35;let damage=m.damage||4;m.attackPose=.42;if(m.role==='archer'){
+ for(let m of mobs){if(!m.alive)continue;if(m.kind==='ally'||m.kind==='minion'){if(time<(m.stunnedUntil||0))continue;const dir=m.friendly?1:-1,range=m.role==='archer'?11:m.role==='vanguard'?4.4:3.8;
+ const blocking=mobs.filter(o=>o.alive&&o.kind==='tower'&&o.friendly!==m.friendly&&o.lane===m.lane).sort((a,b)=>m.friendly?a.z-b.z:b.z-a.z)[0];
+ const barrier=blocking&&dir*(blocking.z-m.z)>-3?blocking:null;
+ const barrierDistance=barrier?Math.hypot(barrier.x-m.x,barrier.z-m.z):Infinity;
+ let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);
+ if(!target&&barrier&&barrierDistance<Math.max(range+3,13))target=barrier;
+ let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range&&!target;
+ if(!target&&!heroTarget){const nextZ=m.z+dir*dt*m.speed;
+ m.z=barrier?dir>0?Math.min(nextZ,barrier.z-7):Math.max(nextZ,barrier.z+7):nextZ;
+ m.x=laneApproach(m.lane??0,m.z,m.friendly);m.root.position.set(m.x,0,m.z);if(time<(m.spawnSpinUntil||0))m.root.rotation.y+=dt*12}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?2.1:m.role==='vanguard'?1.7:1.35;let damage=m.damage||4;m.attackPose=.42;if(m.role==='archer'){
   let aim=target?{x:target.x,y:2.3,z:target.z,target}:{x:position.x,y:2.2,z:position.z,hero:true};
   fireProjectile({x:m.x,y:2.8,z:m.z},aim,damage,'arrow',m);
- }else if(target){target.hp-=damage;if(target.hp<=0){target.alive=false;target.root.visible=false;if(m.friendly&&target.kind==='minion')awardMinion(target)}}else if(heroTarget)takeDamage(damage)}}
+ }else if(target){target.hp-=damage;if(target.hp<=0){if(target.kind==='tower'){finishMob(target,m.friendly);$('status').textContent='TOWER DESTROYED · LANE UNLOCKED'}else{target.alive=false;target.root.visible=false;if(m.friendly&&target.kind==='minion')awardMinion(target)}}}else if(heroTarget)takeDamage(damage)}}
  if(m.z<3||m.z>641){m.alive=false;m.root.visible=false;continue}}
  }
  tickProjectiles(dt);
@@ -621,12 +629,18 @@ const GF21 = (() => {
   for(const tower of mobs.filter(m=>m.alive&&m.kind==='tower')){
    tower.attackClock=(tower.attackClock||0)-dt;
    if(tower.attackClock>0)continue;
-   const range=19+(tower.tier||0)*2;
-   const enemy=targets.find(o=>o.friendly!==tower.friendly&&Math.hypot(o.x-tower.x,o.z-tower.z)<range);
+   const range=22+(tower.tier||0)*2;
+   tower.towerId??=tower.lane+'-'+tower.tier+'-'+tower.friendly;
+   const eligible=targets.filter(o=>o.friendly!==tower.friendly&&Math.hypot(o.x-tower.x,o.z-tower.z)<range);
    const player=!tower.friendly&&hp>0&&Math.hypot(position.x-tower.x,position.z-tower.z)<range;
-   if(!enemy&&!player)continue;
+   if(!tower.targetLock||!((tower.targetLock==='player'&&player)||(tower.targetLock!=='player'&&tower.targetLock.alive&&eligible.includes(tower.targetLock))))tower.targetLock=null;
+   if(!tower.targetLock){const entrants=eligible.map(o=>({o,at:o.enteredTowerAt?.[tower.towerId]??now}));if(player)entrants.push({o:'player',at:tower.playerEnteredAt??now});entrants.sort((a,b)=>a.at-b.at);tower.targetLock=entrants[0]?.o||null;}
+   const enemy=tower.targetLock==='player'?null:tower.targetLock;
+   for(const o of eligible){o.enteredTowerAt??={};o.enteredTowerAt[tower.towerId]??=now}
+   if(player)tower.playerEnteredAt??=now;else tower.playerEnteredAt=null;
+   if(!enemy&&tower.targetLock!=='player')continue;
    tower.attackClock=[1.75,1.55,1.35][tower.tier||0];
-   const dmg=[13,19,26][tower.tier||0];
+   const dmg=[24,34,48][tower.tier||0];
    const dest=enemy?{x:enemy.x,y:2.3,z:enemy.z,target:enemy}:{x:position.x,y:2.2,z:position.z,hero:true};
    fireProjectile({x:tower.x,y:13,z:tower.z},dest,dmg,'tower',tower);
   }
