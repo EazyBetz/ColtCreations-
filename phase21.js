@@ -438,6 +438,7 @@ const GF21 = (() => {
   const dark=material('#24252c'),hide=material('#43343a'),fang=material('#e8d6c4'),glow=new T.MeshStandardMaterial({color:'#f05e55',emissive:'#d51e23',emissiveIntensity:2});
   for(const side of [-1,1])for(const z of [215,405]){
    const x=side*46,radius=18;
+   const approach=mesh(new T.PlaneGeometry(94,13),material('#526748'),x,.045,z);approach.rotation.x=-Math.PI/2;
    const zone=mesh(new T.CircleGeometry(radius,40),new T.MeshStandardMaterial({color:'#23432b',transparent:true,opacity:.76,side:T.DoubleSide}),x,.06,z);zone.rotation.x=-Math.PI/2;
    const rim=mesh(new T.TorusGeometry(radius,.32,6,64),material('#8e6b48'),x,.15,z);rim.rotation.x=Math.PI/2;
    for(let i=0;i<28;i++){const a=i*Math.PI*2/28,rr=radius-2.3;const grass=mesh(new T.ConeGeometry(.4,1.7,4),material(i%2?'#385e39':'#4b7744'),x+Math.cos(a)*rr,.8,z+Math.sin(a)*rr);grass.rotation.z=Math.sin(a)*.24}
@@ -635,7 +636,7 @@ const GF21 = (() => {
   for(const b of bots)if(b.alive&&inSanctuary(b.x,b.z,!b.friendly)){b.hp=0;b.alive=false;b.root.visible=false;b.respawnAt=now+11000}
   if(hp>0&&inSanctuary(position.x,position.z,false)){hp=0;$('status').textContent='ENEMY SANCTUARY · LETHAL WATERS'}
  }
- function collision(x,z){if(z<55||z>589)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);return !(nearest||crossing||camp||grass)}
+ function collision(x,z){if(z<55||z>589)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);let jungleEntry=demonDogs.some(d=>Math.abs(z-d.homeZ)<7&&Math.abs(x-d.homeX)<49);return !(nearest||crossing||camp||grass||jungleEntry)}
 
  // Animated physical weapon, attached to the character's hand position, not the VFX.
  function buildPhysicalWeapon(type){
