@@ -471,6 +471,10 @@ const GF21 = (() => {
   const state=gold+'|'+available+'|'+Object.values(ownedItems).join(',');
   if(shopPanel.dataset.state!==state)updateShop();
  }
+ if(!window.gf43HudRegion||window.gf43HudRegion!==(window.gfGetConfig?.().heritage||'japan')){
+  const c=window.gfGetConfig?.()||{},groups=window.GFRegionalAbilities?.[c.heritage||'japan'];
+  if(groups){window.gf43HudRegion=c.heritage||'japan';for(let i=0;i<3;i++){const selected=groups[i].find(a=>a[0]===c['ability'+(i+1)])||groups[i][0];const button=$('s'+(i+1));if(button){button.title=selected[0]+' — '+selected[1];button.setAttribute('aria-label',button.title);button.dataset.abilityName=selected[0]}}}
+ }
  if(baseHud){$('gf35Timer').textContent=matchEnded?'MATCH OVER':matchElapsed<30?'WAVE 0:'+String(Math.ceil(30-matchElapsed)).padStart(2,'0'):'NEXT '+Math.max(0,Math.ceil(27-(matchElapsed-lastWave)))+'s';$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
  }
 
