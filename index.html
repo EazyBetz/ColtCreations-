@@ -350,4 +350,15 @@ document.getElementById('save').addEventListener('click',()=>localStorage.setIte
  document.getElementById('gf41-settings').onclick=()=>notice('INSTALL THE GAME USING THE BUTTON BELOW. SETTINGS PANEL COMING LATER.');
  stage.querySelectorAll('[data-choose-mode]').forEach(b=>b.addEventListener('click',()=>{const m=b.dataset.chooseMode;const target=[...document.querySelectorAll('[data-mode]')].find(el=>el.dataset.mode===m);target?.click()}));
 })();
-</script></body></html>
+</script><style>
+/* Phase 42: edge-to-edge cinematic screen on mobile and desktop */
+#home,#home.active{position:absolute!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;overflow:hidden!important;margin:0!important;padding:0!important}
+#home .gf41-stage{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;aspect-ratio:auto!important;border-radius:0!important}
+#home .gf41-art{position:absolute!important;inset:0!important;background-size:cover!important;background-position:center center!important}
+#home .gf41-top{height:clamp(50px,10vh,95px)!important}
+#home .gf41-sidebar{top:18%!important}
+#home .gf41-action{bottom:8%!important}
+#home .gf41-play{height:clamp(52px,10vh,100px)!important}
+#home .gf41-brand strong{font-size:clamp(26px,4.5vw,75px)!important}
+@media(orientation:portrait){#home .gf41-art{background-position:50% center!important}#home .gf41-sidebar{top:20%!important;width:27%!important}#home .gf41-sidebar button{min-height:39px!important;font-size:11px!important}#home .gf41-versus{top:34%!important;left:31%!important;width:66%!important}#home .gf41-action{width:76%!important;left:55%!important;bottom:11%!important}#home .gf41-play{height:75px!important;font-size:38px!important}#home .gf41-brand{top:10%!important}#home .gf41-brand strong{font-size:clamp(27px,7vw,52px)!important}#home .gf41-profile{max-width:34%!important}#home .gf41-account{gap:2px!important}#home .gf41-gems{display:none}}
+</style></body></html>
