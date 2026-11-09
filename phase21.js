@@ -371,13 +371,11 @@ const GF21 = (() => {
   const specs=[['Aegis',true,-1,'#73c7e8'],['Ember',true,1,'#f8a869'],['Riven',false,-1,'#e87c79'],['Nyx',false,0,'#b58af0'],['Thorn',false,1,'#d6ae6a']];
   for(const [name,friendly,lane,tint] of specs){
    const z=friendly?16:628,x=laneX(0,z),root=new T.Group();root.position.set(x,0,z);scene.add(root);
-   const armor=material(friendly?'#405d74':'#75424e'),accent=material(tint);
-   mesh(new T.CylinderGeometry(.54,.68,1.5,8),armor,0,1.7,0,root);
-   mesh(new T.BoxGeometry(1.35,.92,.8),accent,0,2.55,0,root);
-   mesh(new T.SphereGeometry(.46,10,8),accent,0,3.3,0,root);
-   for(const side of [-1,1]){mesh(new T.CylinderGeometry(.22,.26,1.3,7),armor,side*.9,2.1,0,root);mesh(new T.CylinderGeometry(.23,.28,1.35,7),armor,side*.36,.67,0,root)}
-   const pivot=new T.Group();pivot.position.set(.94,2.55,.3);root.add(pivot);
-   mesh(new T.BoxGeometry(.17,1.5,.25),material('#e0d8d1'),0,.72,0,pivot);
+   const heritageId=({Aegis:'greece',Ember:'japan',Riven:'europe',Nyx:'egypt',Thorn:'norse'})[name];
+   const heritage=window.GFHeritages[heritageId];
+   const botConfig={heritage:heritageId,heritageArmor:heritage.armor[2][0],heritageWeapon:heritage.weapons[1][0],armorColor:heritage.metal,trimColor:heritage.color,clothColor:heritage.cloth,skin:'#ae8169',hairColor:'#30241f',sex:name==='Nyx'||name==='Ember'?'Female':'Male',body:'Athletic',heritageHelmet:true};
+   window.GFGodAppearance(root,T,mesh,material,{config:botConfig,weapon:false});
+   const pivot=new T.Group();pivot.position.set(.6,1.36,.06);root.add(pivot);pivot.add(window.GFBuildHeritageWeapon(T,botConfig));
    bots.push({name,friendly,lane,x,z,root,pivot,hp:310,max:310,alive:true,attackClock:1,attackPose:0,spellClock:4+Math.random()*4,respawnAt:0,spawnSpinUntil:performance.now()+1600});
   }
  }
@@ -546,7 +544,10 @@ const GF21 = (() => {
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
  function applyStyle(root){window.GFGodAppearance?.(root,T,mesh,material)}
- async function getGod(){let selected=localStorage.getItem('gf19_model')||'goddess_muscular';let g=await new Promise((resolve,reject)=>new Loader().load('models/'+selected+'.glb',resolve,undefined,reject));const root=new T.Group();root.add(fitGLB(g.scene));applyStyle(root);return root}
+ async function getGod(){const root=new T.Group();window.GFGodAppearance(root,T,mesh,material,{weapon:false});return root}
+ let appliedHeritage='';
+ function refreshHeritage(){if(!hero||!T)return;const c=window.gfGetConfig();const key=window.GFLoadoutKey?.(c);if(key===appliedHeritage)return;window.GFGodAppearance(hero,T,mesh,material,{weapon:false});appliedHeritage=key;buildPhysicalWeapon(c.weapon)}
+
  function createMob(x,z,kind){
   const root=new T.Group();root.position.set(x,0,z);scene.add(root);
   const tower=kind==='tower',friendly=kind==='ally';
@@ -652,23 +653,16 @@ const GF21 = (() => {
  function buildPhysicalWeapon(type){
   if(!T||!modelRoot)return;
   if(weaponRig){modelRoot.remove(weaponRig);weaponRig.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose()}})}
-  activeWeapon=type;weaponRig=new T.Group();weaponRig.position.set(.9,2.12,.3);modelRoot.add(weaponRig);
+  activeWeapon=type+'|'+window.gfGetConfig().heritageWeapon;weaponRig=new T.Group();weaponRig.position.set(.9,2.12,.3);modelRoot.add(weaponRig);
   weaponGrip=new T.Group();weaponRig.add(weaponGrip);
-  const steel=new T.MeshStandardMaterial({color:'#c9d4df',metalness:.85,roughness:.22});
-  const trim=new T.MeshStandardMaterial({color:'#b78b48',metalness:.68,roughness:.28});
-  const grip=new T.MeshStandardMaterial({color:'#352b29',roughness:.85});
-  const box=(w,h,d,mat,x,y,z)=>mesh(new T.BoxGeometry(w,h,d),mat,x,y,z,weaponGrip);
-  const shaft=(h,r,mat)=>mesh(new T.CylinderGeometry(r,r,h,9),mat,0,h/2,0,weaponGrip);
-  if(type==='War Axe'){shaft(2.8,.095,grip);box(1.35,.83,.25,steel,.48,2.35,0);box(.6,.14,.4,trim,0,1.8,0)}
-  else if(type==='Spear'){shaft(3.5,.065,grip);mesh(new T.ConeGeometry(.27,.85,7),steel,0,3.87,0,weaponGrip);box(.28,.12,.32,trim,0,3.38,0)}
-  else if(type==='Staff'){shaft(3.4,.13,grip);mesh(new T.OctahedronGeometry(.42,1),new T.MeshStandardMaterial({color:'#83baff',emissive:'#306bcd',emissiveIntensity:1.1}),0,3.7,0,weaponGrip);box(.5,.12,.5,trim,0,3.1,0)}
-  else if(type==='Dual Blades'){for(const side of [-1,1]){box(.1,1.45,.19,steel,side*.42,1.05,0);box(.38,.1,.25,trim,side*.42,.3,0)}}
-  else {shaft(.95,.11,grip);box(.75,.13,.34,trim,0,.9,0);box(type==='Greatsword'?.23:.18,type==='Greatsword'?2.75:2.15,.22,steel,0,type==='Greatsword'?2.33:2.05,0);mesh(new T.ConeGeometry(.2,.55,4),steel,0,type==='Greatsword'?3.95:3.42,0,weaponGrip)}
+  const regionalWeapon=window.GFBuildHeritageWeapon(T,window.gfGetConfig());weaponGrip.add(regionalWeapon);
+  weaponRig.position.set(.6,1.36,.06);
+
   weaponGrip.rotation.set(0,0,-.15);
  }
  function animatePhysicalWeapon(dt){
   const selected=window.gfGetConfig?.().weapon||'Greatsword';
-  if(selected!==activeWeapon)buildPhysicalWeapon(selected);
+  if(selected+'|'+window.gfGetConfig().heritageWeapon!==activeWeapon)buildPhysicalWeapon(selected);
   if(!weaponGrip)return;
   weaponAttackAge+=dt;
   const duration=selected==='War Axe'?.63:selected==='Spear'?.43:.48;
@@ -687,7 +681,7 @@ const GF21 = (() => {
    if(weaponAttackStep===3)weaponGrip.rotation.x=-1.4+2.6*t;
   }
  }
-  async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');const mod=await import('https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader.js');Loader=mod.GLTFLoader;scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;console.error(e)}}
+  async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;$('fallback').classList.remove('show');requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;$('fallback').textContent='Battle rendering needs WebGL 2. Open the game in a supported browser with graphics acceleration enabled.';$('fallback').classList.add('show');console.error(e)}}
  // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
  function hit(){if(!active||hp<=0||shopPanel&&!shopPanel.hidden)return;
   recallUntil=0;strike=(strike%3)+1;attackTime=.46;weaponAttackStep=strike;weaponAttackAge=0;
@@ -757,7 +751,7 @@ const GF21 = (() => {
  const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=-input.x; // Phase 22: horizontal stick reversed; vertical unchanged
  let speed=dt*15*(time<speedBuffUntil?1.25:1)*(ownedItems[5]?1+ownedItems[5]*.08:1);let dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed,dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed;
  if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0||shopPanel&&!shopPanel.hidden){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(4,Math.min(640,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
- modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
+ refreshHeritage();modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
  combatForge?.tick(dt);

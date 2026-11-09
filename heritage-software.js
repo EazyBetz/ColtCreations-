@@ -1,0 +1,13 @@
+/* Canvas compatibility renderer. Uses the same geometry as the WebGL viewer. */
+window.GFSoftwareRenderer=function(T,canvas){
+ const ctx=canvas.getContext('2d');let ratio=1,lastKey='',version=0;
+ function render(scene,camera){const key=[canvas.width,canvas.height,camera.position.z,scene.children.find(o=>o.name==='forge-figure')?.rotation.y,version].join('|');if(key===lastKey)return;lastKey=key;
+ scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);const view=new T.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse),triangles=[];
+ const w=canvas.width,h=canvas.height;ctx.fillStyle='#10151a';ctx.fillRect(0,0,w,h);const glow=ctx.createRadialGradient(w*.5,h*.5,0,w*.5,h*.5,h*.6);glow.addColorStop(0,'#2b343c');glow.addColorStop(1,'#10151a');ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+ const v1=new T.Vector3(),v2=new T.Vector3(),normal=new T.Vector3(),light=new T.Vector3(3,5,7).normalize();
+ scene.traverse(o=>{if(!o.isMesh||!o.visible||!o.geometry.attributes.position||o.geometry.type==='PlaneGeometry')return;const normals=o.geometry.attributes.normal,nmat=new T.Matrix3().getNormalMatrix(o.matrixWorld);const a=o.geometry.attributes.position,idx=o.geometry.index,mat=Array.isArray(o.material)?o.material[0]:o.material,base=mat.color||new T.Color('#888888');const verts=[];for(let j=0;j<a.count;j++){const world=new T.Vector3().fromBufferAttribute(a,j).applyMatrix4(o.matrixWorld),p=world.clone().applyMatrix4(view);const n=normals?new T.Vector3().fromBufferAttribute(normals,j).applyMatrix3(nmat).normalize():null;verts.push({world,n,x:(p.x+1)*w/2,y:(1-p.y)*h/2,z:p.z})}
+ for(let j=0;j<(idx?idx.count:a.count);j+=3){const p=verts[idx?idx.getX(j):j],q=verts[idx?idx.getX(j+1):j+1],r=verts[idx?idx.getX(j+2):j+2];if(!p||!q||!r||Math.max(p.z,q.z,r.z)>1)continue;normal.crossVectors(v1.subVectors(q.world,p.world),v2.subVectors(r.world,p.world)).normalize();if(mat.side!==T.DoubleSide&&normal.dot(v1.subVectors(camera.position,p.world))<0)continue;if(p.n&&q.n&&r.n)normal.copy(p.n).add(q.n).add(r.n).normalize();const l=.22+Math.max(0,normal.dot(light))*.72;const color=base.clone().multiplyScalar(l).convertLinearToSRGB();triangles.push({p,q,r,z:(p.z+q.z+r.z)/3,color:'#'+color.getHexString()})}});
+ triangles.sort((a,b)=>b.z-a.z);ctx.lineWidth=.45;for(const t of triangles){ctx.fillStyle=t.color;ctx.strokeStyle=t.color;ctx.beginPath();ctx.moveTo(t.p.x,t.p.y);ctx.lineTo(t.q.x,t.q.y);ctx.lineTo(t.r.x,t.r.y);ctx.closePath();ctx.fill();ctx.stroke()}
+ }
+ return {isSoftware:true,shadowMap:{},setPixelRatio(v){ratio=Math.min(v,1)},getPixelRatio(){return ratio},setSize(w,h){canvas.width=w*ratio;canvas.height=h*ratio},render,invalidate(){version++}};
+};
