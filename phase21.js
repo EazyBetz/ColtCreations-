@@ -289,6 +289,7 @@ const GF21 = (() => {
  const info=shopPanel.querySelector('#gf29ShopInfo');
  info.textContent=gold+' GOLD · '+(atBase?'SANCTUARY · PURCHASES ENABLED':'OUTSIDE SANCTUARY · PURCHASES LOCKED');
  info.style.color=atBase?'#85f1c2':'#ffac9c';
+ shopPanel.dataset.state=gold+'|'+atBase+'|'+Object.values(ownedItems).join(',');
  const grid=shopPanel.querySelector('.gf29-grid');
  grid.innerHTML=itemTrees.map((it,i)=>{
   const rank=ownedItems[i]||0,cost=rank?it.upgrade:it.cost,canBuy=rank<2&&atBase&&gold>=cost;
@@ -297,6 +298,7 @@ const GF21 = (() => {
  }).join('');
  grid.querySelectorAll('[data-buy]').forEach(button=>button.addEventListener('click',()=>{
   const i=Number(button.dataset.buy),it=itemTrees[i],rank=ownedItems[i]||0,cost=rank?it.upgrade:it.cost;
+  if(!active||hp<=0)return;
   if(rank>=2||gold<cost||!inSanctuary(position.x,position.z,true)){updateShop();return}
   gold-=cost;ownedItems[i]=rank+1;
   if(it.bonus==='health'){const bonus=rank?125:75;maxHp+=bonus;hp=Math.min(maxHp,hp+bonus)}
@@ -308,9 +310,14 @@ const GF21 = (() => {
 }
  function setupHud(){if(baseHud)return;baseHud=document.createElement('div');baseHud.id='gf27Hud';baseHud.style.cssText='position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:6px;justify-content:center;font:700 12px system-ui;color:#fff;text-shadow:0 1px 3px #000;pointer-events:none';baseHud.innerHTML='<span id="gf35Timer" style="background:#171b29e8;padding:7px 10px;border:1px solid #8e8bb7;border-radius:8px">WAVE 0:30</span><span id="gf27HP" style="background:#1c322dcc;padding:7px 10px;border:1px solid #68c4a2;border-radius:8px">HP 350/350</span><span id="gf27Gold" style="background:#2c251bcc;padding:7px 10px;border:1px solid #d5b86d;border-radius:8px">500 GOLD</span><span id="gf27Level" style="background:#1a2034cc;padding:7px 10px;border:1px solid #7d8dce;border-radius:8px">LV 1</span>';document.getElementById('battle').appendChild(baseHud);
  const controls=document.createElement('div');controls.id='gf27Controls';controls.style.cssText='position:absolute;top:27%;right:8px;z-index:85;display:flex;flex-direction:column;gap:8px;pointer-events:auto';controls.innerHTML='<button id="gf27Recall" style="background:#293b55ed;color:white;border:1px solid #88baff;border-radius:9px;padding:7px;font-size:11px;font-weight:700">↩ RECALL</button><button id="gf27Shop" style="background:#534020ed;color:white;border:1px solid #efc87a;border-radius:9px;padding:7px;font-size:11px;font-weight:700">⚒ SHOP</button>';document.getElementById('battle').appendChild(controls);
- shopPanel=document.createElement('div');shopPanel.id='gf29ShopPanel';shopPanel.hidden=true;shopPanel.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px"><div><h2>DIVINE ITEM FORGE</h2><div id="gf29ShopInfo"></div></div><button id="gf29Close">✕ CLOSE</button></div><p style="font-size:12px;color:#bac5cf">Six item trees · each has two tiers · purchases available at your sanctuary.</p><div class="gf29-grid"></div>';document.getElementById('battle').appendChild(shopPanel);shopPanel.querySelector('#gf29Close').onclick=()=>shopPanel.hidden=true;
+ shopPanel=document.createElement('div');shopPanel.id='gf29ShopPanel';shopPanel.hidden=true;shopPanel.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px"><div><h2>DIVINE ITEM FORGE</h2><div id="gf29ShopInfo"></div></div><button id="gf29Close">✕ CLOSE</button></div><p style="font-size:12px;color:#bac5cf">Six item trees · each has two tiers · purchases available at your sanctuary.</p><div class="gf29-grid"></div>';document.getElementById('battle').appendChild(shopPanel);shopPanel.querySelector('#gf29Close').onclick=()=>{shopPanel.hidden=true;$('gf27Shop').textContent='⚒ SHOP'};
+ shopPanel.addEventListener('pointerdown',e=>e.stopPropagation());
+ shopPanel.addEventListener('pointermove',e=>e.stopPropagation());
+ shopPanel.addEventListener('pointerup',e=>e.stopPropagation());
+ shopPanel.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
+ shopPanel.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
  $('gf27Recall').onclick=()=>{if(hp<=0)return;recallUntil=performance.now()+4500;$('status').textContent='Recalling to sanctuary · 4.5 seconds · movement or damage cancels'};
- $('gf27Shop').onclick=()=>{shopPanel.hidden=!shopPanel.hidden;if(!shopPanel.hidden)updateShop()};
+ $('gf27Shop').onclick=()=>{shopPanel.hidden=!shopPanel.hidden;if(!shopPanel.hidden)updateShop();$('gf27Shop').textContent=shopPanel.hidden?'⚒ SHOP':'✕ SHOP OPEN'};
  }
  function utility(){if(!active||hp<=0)return;let now=performance.now();if(now<utilityCooldown){$('status').textContent='Utility cooling down · '+Math.ceil((utilityCooldown-now)/1000)+'s';return}const choice=window.gfGetConfig?.().ability4||'Dash';utilityCooldown=now+12000;recallUntil=0;
  if(choice==='Veilwalk'){window.gfStealthUntil=now+4500;$('status').textContent='VEILWALK · hidden for 4.5 seconds'}
@@ -451,7 +458,11 @@ const GF21 = (() => {
  tickProjectiles(dt);
  for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot){const t=1-m.attackPose/.42;m.weaponPivot.rotation.z=m.role==='archer'?Math.sin(t*Math.PI)*.5:-Math.sin(t*Math.PI)*(m.role==='vanguard'?1.6:1.25);if(m.arrow)m.arrow.position.z=.2-Math.sin(t*Math.PI)*.35;}m.root.rotation.y=Math.sin((1-m.attackPose/.42)*Math.PI)*.22*(m.friendly?1:-1)}}
  if(hp<=0&&!respawnAt){respawnAt=time+7000;$('status').textContent='Defeated · respawning in 7 seconds'}
- if(shopPanel&&!shopPanel.hidden&&Math.floor(time/250)!==Math.floor((time-dt*1000)/250))updateShop();
+ if(shopPanel&&!shopPanel.hidden){
+  const available=inSanctuary(position.x,position.z,true);
+  const state=gold+'|'+available+'|'+Object.values(ownedItems).join(',');
+  if(shopPanel.dataset.state!==state)updateShop();
+ }
  if(baseHud){$('gf35Timer').textContent=matchEnded?'MATCH OVER':matchElapsed<30?'WAVE 0:'+String(Math.ceil(30-matchElapsed)).padStart(2,'0'):'NEXT '+Math.max(0,Math.ceil(27-(matchElapsed-lastWave)))+'s';$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
  }
 
