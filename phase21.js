@@ -539,7 +539,30 @@ const GF21 = (() => {
   const gold=new T.MeshStandardMaterial({color:cold?'#b5d9e9':'#d8b36c',metalness:.86,roughness:.23});
   const obsidian=new T.MeshStandardMaterial({color:'#263143',metalness:.7,roughness:.3});
   const divine=new T.MeshStandardMaterial({color:cold?'#78cfff':'#f8b75e',emissive:cold?'#278ce9':'#ce7425',emissiveIntensity:1.6,metalness:.4,roughness:.25});
-  const chest=mesh(new T.BoxGeometry(1.35,.67,.26),obsidian,0,2.18,.43,root);chest.rotation.x=-.14;
+  // Rounded, layered armor silhouette rather than a floating rectangular plate.
+  const chest=mesh(new T.SphereGeometry(.83,32,20),obsidian,0,2.12,.23,root);chest.scale.set(1.14,.63,.54);
+  const chestPlate=mesh(new T.SphereGeometry(.74,32,16),gold,0,2.21,.55,root);chestPlate.scale.set(.94,.43,.24);
+  for(const side of [-1,1]){const rib=mesh(new T.TorusGeometry(.56,.07,8,32,Math.PI*.72),gold,side*.33,1.94,.48,root);rib.rotation.z=side*.62}
+  const waist=mesh(new T.CylinderGeometry(.58,.48,.24,18),gold,0,1.45,0,root);
+  for(const side of [-1,1]){const hip=mesh(new T.SphereGeometry(.35,18,12),obsidian,side*.46,1.17,0,root);hip.scale.set(.85,1.2,.7);
+   const greave=mesh(new T.CylinderGeometry(.29,.24,.65,14),gold,side*.4,.53,.19,root);greave.rotation.z=side*.08;
+   const boot=mesh(new T.SphereGeometry(.33,16,10),obsidian,side*.4,.2,.28,root);boot.scale.set(1,.5,1.4);
+  }
+  // Sculpted face overlay: visible brows, eyes, nose, mouth and layered hair.
+  const head=mesh(new T.SphereGeometry(.43,28,20),new T.MeshStandardMaterial({color:'#a77d68',roughness:.82}),0,2.91,.16,root);head.scale.set(.83,1.08,.8);
+  const hair=new T.MeshStandardMaterial({color:'#241a1b',roughness:.95});
+  mesh(new T.SphereGeometry(.43,24,14),hair,0,3.19,.08,root).scale.set(.91,.48,.82);
+  for(const side of [-1,1]){
+   mesh(new T.SphereGeometry(.095,12,8),material('#f2e8d7'),side*.16,2.96,.465,root).scale.set(1.2,.6,.36);
+   mesh(new T.SphereGeometry(.045,10,8),divine,side*.16,2.96,.51,root);
+   const brow=mesh(new T.BoxGeometry(.25,.055,.09),hair,side*.16,3.075,.465,root);brow.rotation.z=side*.11;
+   const cheek=mesh(new T.SphereGeometry(.16,14,10),material('#946e5e'),side*.26,2.8,.42,root);cheek.scale.set(.8,.5,.3);
+  }
+  const nose=mesh(new T.ConeGeometry(.085,.26,10),material('#b58a75'),0,2.87,.54,root);nose.rotation.x=Math.PI/2;
+  mesh(new T.BoxGeometry(.21,.035,.04),material('#65483f'),0,2.72,.48,root);
+  // Flowing locks make the silhouette distinct at third-person camera distance.
+  for(let i=0;i<9;i++){const angle=(i/8)*Math.PI;const lock=mesh(new T.CylinderGeometry(.065,.018,.65+(i%3)*.16,8),hair,Math.cos(angle)*.4,2.82,-.05-Math.sin(angle)*.3,root);lock.rotation.z=Math.cos(angle)*.18}
+
   mesh(new T.OctahedronGeometry(.28,0),divine,0,2.24,.62,root);
   for(const side of [-1,1]){
    const shoulder=mesh(new T.SphereGeometry(.55,12,8),gold,side*.9,2.55,0,root);shoulder.scale.set(1.18,.63,.88);
@@ -556,7 +579,7 @@ const GF21 = (() => {
 
   // Preserve authored GLB character proportions while improving material response.
   root.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.receiveShadow=true;
-   if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.isMeshStandardMaterial||m.isMeshPhysicalMaterial){m.roughness=Math.max(.28,Math.min(.88,m.roughness??.68));m.metalness=Math.max(0,Math.min(.62,m.metalness??.1));m.needsUpdate=true}}}
+   if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.isMeshStandardMaterial||m.isMeshPhysicalMaterial){m.roughness=Math.max(.3,Math.min(.82,m.roughness??.68));m.metalness=Math.max(0,Math.min(.65,m.metalness??.1));m.envMapIntensity=.65;m.needsUpdate=true}}}
   });
  }
  async function getGod(){let selected=localStorage.getItem('gf19_model')||'goddess_muscular';let g=await new Promise((resolve,reject)=>new Loader().load('models/'+selected+'.glb',resolve,undefined,reject));const root=new T.Group();root.add(fitGLB(g.scene));applyStyle(root);return root}
