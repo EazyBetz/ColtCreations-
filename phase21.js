@@ -729,15 +729,17 @@ const GF21 = (() => {
  let abilityReady=[0,0,0],summons=[];
  function cast(which){
   if(!active||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
-  const cfg=window.gfGetConfig?.()||{},name=cfg['ability'+(which+1)]||'Cinder Fan';const pool={Cone:['Cinder Fan','Glacier Breath','Dread Howl'],Line:['Storm Lance','Rift Spear','Solar Rail'],Placement:['Grave Circle','Forge Turret','Verdant Snare']};let type=Object.keys(pool).find(k=>pool[k].includes(name))||'Cone';abilityReady[which]=now+(type==='Placement'?11500:7000);recallUntil=0;
+  const cfg=window.gfGetConfig?.()||{},regional=window.GFRegionalAbilities?.[cfg.heritage||'japan'],selected=regional?.[which]?.some(x=>x[0]===cfg['ability'+(which+1)])?cfg['ability'+(which+1)]:regional?.[which]?.[0]?.[0],name=selected||cfg['ability'+(which+1)]||'Cinder Fan';
+ const pool={Cone:['Cinder Fan','Glacier Breath','Dread Howl'],Line:['Storm Lance','Rift Spear','Solar Rail'],Placement:['Grave Circle','Forge Turret','Verdant Snare']};
+ const meta=window.GFRegionalAbilityMeta?.[name],type=meta?.category||Object.keys(pool).find(k=>pool[k].includes(name))||'Cone';abilityReady[which]=now+(meta?.cooldown||(type==='Placement'?11500:7000));recallUntil=0;
   const dirX=Math.sin(yaw),dirZ=Math.cos(yaw),originX=position.x,originZ=position.z;
   const distance=type==='Line'?19:type==='Cone'?11:13;
   const tx=originX+dirX*distance,tz=originZ+dirZ*distance;
-  if(combatForge)combatForge.ability(name,originX,originZ,yaw,tx,tz);
+  if(combatForge&&!meta)combatForge.ability(name,originX,originZ,yaw,tx,tz);
   else {
    const fx=new T.Group();scene.add(fx);fx.position.set(originX,0,originZ);
-   const mat=new T.MeshBasicMaterial({color:'#b5a2ff',transparent:true,opacity:.55,depthWrite:false,side:T.DoubleSide});
-   const indicator=mesh(new T.RingGeometry(1,3.4,32),mat,dirX*7,.12,dirZ*7,fx);
+   const mat=new T.MeshBasicMaterial({color:window.GFHeritages?.[cfg.heritage]?.color||'#b5a2ff',transparent:true,opacity:.72,depthWrite:false,side:T.DoubleSide});
+   const indicator=mesh(new T.RingGeometry(type==='Placement'?2:1,type==='Placement'?6:3.4,32),mat,dirX*(type==='Placement'?13:7),.12,dirZ*(type==='Placement'?13:7),fx);
    indicator.rotation.x=-Math.PI/2;
    effects.push({mesh:fx,ttl:.7,max:.7,spell:which});
   }
@@ -747,14 +749,14 @@ const GF21 = (() => {
    summons.push({mesh:turret,x:tx,z:tz,until:now+8000,next:0});
   }
  for(const m of mobs){if(!m.alive||m.friendly)continue;const dx=m.x-originX,dz=m.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX),range=Math.hypot(dx, dz);let hit=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(m.x-tx,m.z-tz)<6;if(!hit)continue;
-   let dmg=type==='Line'?65:type==='Cone'?43:35; if(name==='Solar Rail')dmg=90;if(name==='Dread Howl')m.stunnedUntil=now+1100;if(name==='Glacier Breath'||name==='Verdant Snare')m.stunnedUntil=now+1700;
+   let dmg=meta?.damage||(type==='Line'?65:type==='Cone'?43:35); if(name==='Solar Rail')dmg=90;if(meta?.stun)m.stunnedUntil=now+(type==='Placement'?1700:1050);if(name==='Dread Howl')m.stunnedUntil=now+1100;if(name==='Glacier Breath'||name==='Verdant Snare')m.stunnedUntil=now+1700;
    m.hp-=dmg+powerBonus;if(m.hp<=0)finishMob(m,true)
   }
   for(const enemy of [...bots.filter(b=>b.alive&&!b.friendly),...baseStructures.filter(t=>t.alive&&!t.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&!m.friendly))]){
    const dx=enemy.x-originX,dz=enemy.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX);
    const struck=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(enemy.x-tx,enemy.z-tz)<6;
    if(!struck)continue;
-   enemy.hp-=(type==='Line'?65:type==='Cone'?43:35)+powerBonus;
+   enemy.hp-=(meta?.damage||(type==='Line'?65:type==='Cone'?43:35))+powerBonus;
    if(enemy.kind==='titan')endIfTitanDestroyed(enemy);
    else if(enemy.hp<=0){enemy.alive=false;enemy.root.visible=false;enemy.respawnAt=now+11000;gold+=85;kills++}
   }
