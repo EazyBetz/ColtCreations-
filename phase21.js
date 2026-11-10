@@ -1,8 +1,11 @@
 // Godforged Phase 21: shared Z-up GLB character pipeline and rebuilt 3D Witchwood.
+window.gfUseModernBattle=true;
 const GF21 = (() => {
  let T, Loader, renderer, scene, camera, hero, modelRoot, animationFrame, prev=0, yaw=0, pitch=.16;
  let weaponRig=null,weaponGrip=null,weaponAttackAge=0,weaponAttackStep=1,activeWeapon='',active=false, loading=false, initialized=false, combatForge=null, speedBuffUntil=0, position={x:0,z:24}, mobs=[], buffs=[], demonDogs=[], effects=[], strike=0, attackTime=0, look=null;
  let matchStartedAt=0,matchElapsed=0,matchEnded=false,baseStructures=[],sanctuaries=[],bots=[],hp=350,maxHp=350,gold=500,xp=0,level=1,kills=0,lastWave=0,recallUntil=0,respawnAt=0,shopOpen=false,baseFountain=null,baseHud=null,gameTime=0,shopPanel=null,utilityCooldown=0,shieldUntil=0,stunUntil=0,ownedItems={},powerBonus=0,armorBonus=0;
+ let leap=null,jumpHeight=0,attackReadyAt=0,lastCleanup=0;
+ const floorAt=(x,z)=>window.GFWorldRules.surfaceHeight(x,z);
  const canvas=document.createElement('canvas');canvas.id='gf21Battle';canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:none';
  document.getElementById('battle').insertBefore(canvas,document.getElementById('battle').firstChild);
  document.getElementById('world').style.display='none';
@@ -247,7 +250,7 @@ const GF21 = (() => {
  function cobblestoneLanes(){let edge=material('#514f49');const cobble=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:1});for(let l=-1;l<=1;l++){ribbon(l,15,edge,.045);ribbon(l,12.8,cobble,.105);for(let z=25;z<625;z+=14){for(let side of [-1,1]){let x=laneX(l,z)+side*7.65;let curb=mesh(new T.BoxGeometry(.85,.36,3.5),material((Math.floor(z/14)%3)?'#6a685f':'#77736a'),x,.20,z);curb.rotation.y=Math.sin(z*.013+l*2.3)*.05}}}}
  const flowingWater=[];
  function fountain(x,z,friendly){
-  const g=new T.Group();g.position.set(x,0,z);scene.add(g);
+  const g=new T.Group();g.userData.dynamic=true;g.position.set(x,0,z);scene.add(g);
   const stone=surface('masonry','#87918b',2),marble=surface('slate','#a9aaa0',2),bronze=material('#a58a51',.32);
   const water=new T.MeshStandardMaterial({color:friendly?'#398d99':'#98566c',metalness:.55,roughness:.16,transparent:true,opacity:.82});
   // The basin sits behind the spawn, keeping the healing plaza and lane exits open.
@@ -277,27 +280,12 @@ const GF21 = (() => {
   flowingWater.push({droplets,rings});return g;
  }
  function tickSanctuaries(dt,time){for(const f of flowingWater){for(const d of f.droplets)d.drop.position.copy(d.curve.getPoint((time*.0005+d.offset)%1));for(let i=0;i<f.rings.length;i++){const p=(time*.00025+i/4)%1;f.rings[i].scale.setScalar(1+p*5.5);}}}
- function connectBases(){
-  const road=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:.95}),stone=surface('masonry','#686e62',2),wood=surface('timber','#746855',2);
-  for(const z of [24,620]){
-   // One walkable transverse street joins all three lane centerlines.
-   const path=mesh(new T.PlaneGeometry(218,12),road,0,.32,z);path.rotation.x=-Math.PI/2;
-   for(const x of [-48,48]){
-    const pool=mesh(new T.PlaneGeometry(27,35),new T.MeshStandardMaterial({color:'#101f1b',metalness:.65,roughness:.2}),x,.25,z);pool.rotation.x=-Math.PI/2;
-    for(let j=-12;j<=12;j++)mesh(new T.BoxGeometry(.94,.22,10.6),wood,x+j,.47,z);
-    for(const side of [-1,1]){
-     mesh(new T.BoxGeometry(26,.25,.35),wood,x,1.8,z+side*5.2);
-     for(let j=-12;j<=12;j+=4)mesh(new T.BoxGeometry(.4,1.9,.4),stone,x+j,.95,z+side*5.2);
-     for(let j=0;j<14;j++){const rx=x-12+(j*7%25),rz=z+side*(7+j%8);mesh(new T.ConeGeometry(.12,1.1,4),material('#535b34'),rx,.6,rz);}
-    }
-    for(const end of [-1,1]){const ramp=mesh(new T.BoxGeometry(4,.18,10.6),wood,x+end*14,.39,z);ramp.rotation.z=-end*.045;}
-   }
-  }
- }
+ let witchwood=null;
+ function connectBases(){const road=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:.95});for(const z of [24,620]){const path=mesh(new T.PlaneGeometry(218,12),road,0,.30,z);path.rotation.x=-Math.PI/2;}witchwood=window.GFBuildWitchwood(T,scene,{mesh,material,surface,laneX});}
  function buildBases(){for(let l=-1;l<=1;l++){let x=laneX(l,16);const platform=mesh(new T.CylinderGeometry(17,18,.35,18),material('#55565a'),x,.12,16);platform.receiveShadow=true;let enemyX=laneX(l,628);mesh(new T.CylinderGeometry(17,18,.35,18),material('#52474a'),enemyX,.12,628)}baseFountain=fountain(laneX(0,16),16,true);fountain(laneX(0,628),628,false)}
  const itemTrees=[
   {name:'Stormbrand',icon:'⚡',desc:'Lightning power · +12 spell damage',cost:250,up:'Thunderlord',upgrade:450,bonus:'spell'},
-  {name:'Emberfang',icon:'🔥',desc:'Fire power · +15 spell damage',cost:250,up:'Wildfire',upgrade:450,bonus:'spell'},
+  {name:'Emberfang',icon:'🔥',desc:'Fire power · +12 spell damage',cost:250,up:'Wildfire',upgrade:450,bonus:'spell'},
   {name:'Wintergrasp',icon:'❄',desc:'Frost power · +12 spell damage',cost:250,up:'Permafrost',upgrade:450,bonus:'spell'},
   {name:'Nightpiercer',icon:'☾',desc:'Shadow power · +12 spell damage',cost:250,up:'Eclipse',upgrade:450,bonus:'spell'},
   {name:'Guardian Sigil',icon:'⬡',desc:'Defense · +75 maximum HP',cost:250,up:'Aegis',upgrade:450,bonus:'health'},
@@ -338,13 +326,17 @@ const GF21 = (() => {
  shopPanel.addEventListener('pointerup',e=>e.stopPropagation());
  shopPanel.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
  shopPanel.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
- $('gf27Recall').onclick=()=>{if(hp<=0)return;recallUntil=performance.now()+4500;$('status').textContent='Recalling to sanctuary · 4.5 seconds · movement or damage cancels'};
+ $('gf27Recall').onclick=()=>{if(hp<=0||leap||matchEnded)return;recallUntil=performance.now()+4500;$('status').textContent='Recalling to sanctuary · 4.5 seconds · movement or damage cancels'};
  $('gf27Shop').onclick=()=>{shopPanel.hidden=!shopPanel.hidden;if(!shopPanel.hidden)updateShop();$('gf27Shop').textContent=shopPanel.hidden?'⚒ SHOP':'✕ SHOP OPEN'};
  }
- function utility(){if(!active||hp<=0)return;let now=performance.now();if(now<utilityCooldown){$('status').textContent='Utility cooling down · '+Math.ceil((utilityCooldown-now)/1000)+'s';return}const choice=window.gfGetConfig?.().ability4||'Dash';utilityCooldown=now+12000;recallUntil=0;
+ function utility(){if(!active||matchEnded||leap||hp<=0||shopPanel&&!shopPanel.hidden)return;let now=performance.now();if(now<utilityCooldown){$('status').textContent='Utility cooling down · '+Math.ceil((utilityCooldown-now)/1000)+'s';return}const choice=window.gfGetConfig?.().ability4||'Dash';utilityCooldown=now+12000;recallUntil=0;
  if(choice==='Veilwalk'){window.gfStealthUntil=now+4500;$('status').textContent='VEILWALK · hidden for 4.5 seconds'}
- else if(choice==='Sky Leap'){let landed=false;for(let d=16;d>=2;d--){const nx=position.x+Math.sin(yaw)*d,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*d));if(!collision(nx,nz)){position.x=nx;position.z=nz;landed=true;break}}shieldUntil=now+700;$('status').textContent=landed?'SKY LEAP · landed':'SKY LEAP · blocked'}
- else if(choice==='Wind Dash'||choice==='Dash'){let landed=false;for(let d=11;d>=1;d--){const nx=position.x+Math.sin(yaw)*d,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*d));if(!collision(nx,nz)){position.x=nx;position.z=nz;landed=true;break}}$('status').textContent=landed?'WIND DASH · repositioned':'WIND DASH · blocked'}
+ else if(choice==='Sky Leap'){
+  for(let d=16;d>=2;d--){const nx=position.x+Math.sin(yaw)*d,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*d));if(!collision(nx,nz)){leap={from:{...position},to:{x:nx,z:nz},elapsed:0,duration:.95};break}}
+  if(!leap){utilityCooldown=now;$('status').textContent='SKY LEAP · no safe landing';return}
+  $('status').textContent='SKY LEAP · airborne';
+ }
+ else if(choice==='Wind Dash'||choice==='Dash'){let landed=false;for(let d=.5;d<=11;d+=.5){const nx=position.x+Math.sin(yaw)*.5,nz=Math.max(4,Math.min(640,position.z+Math.cos(yaw)*.5));if(collision(nx,nz))break;position.x=nx;position.z=nz;landed=true}$('status').textContent=landed?'WIND DASH · repositioned':'WIND DASH · blocked'}
  else if(choice==='Heal'){hp=Math.min(maxHp,hp+95+level*7);$('status').textContent='DIVINE MEND · health restored'}
  else if(choice==='Shield'){shieldUntil=now+4500;$('status').textContent='AEGIS SHIELD · 4.5 seconds of protection'}
  else if(choice==='Stun'){for(const m of mobs)if(m.alive&&!m.friendly&&m.kind!=='tower'&&Math.hypot(m.x-position.x,m.z-position.z)<9)m.stunnedUntil=now+2400;$('status').textContent='SHOCKWAVE STUN · nearby enemies halted'}
@@ -416,18 +408,18 @@ const GF21 = (() => {
     b.attackClock-=dt;b.spellClock-=dt;
     if(d<=5&&b.attackClock<=0){
      b.attackClock=1.2;b.attackPose=.42;let dmg=11;
-     if(target.type==='player')hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
+     if(target.type==='player')receiveDamage(dmg,now);
      else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else if(target.type==='bot'){target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}else if(target.type==='titan')endIfTitanDestroyed(target.obj)}}
     }
     if(d<13&&b.spellClock<=0){
      b.spellClock=8+Math.random()*3;
      combatForge?.ability(['Cinder Fan','Storm Lance','Rift Spear'][Math.floor(Math.random()*3)],b.x,b.z,b.root.rotation.y,target.x,target.z);
      const dmg=17;
-     if(target.type==='player')hp=Math.max(0,hp-(now<shieldUntil?dmg*.25:dmg));
+     if(target.type==='player')receiveDamage(dmg,now);
      else {target.obj.hp-=dmg;if(target.obj.hp<=0){if(target.type==='mob')finishMob(target.obj,false);else if(target.type==='bot'){target.obj.alive=false;target.obj.root.visible=false;target.obj.respawnAt=now+11000}else if(target.type==='titan')endIfTitanDestroyed(target.obj)}}
     }
    }
-   b.root.position.set(b.x,0,b.z);
+   b.root.position.set(b.x,floorAt(b.x,b.z),b.z);
    if(now<(b.spawnSpinUntil||0))b.root.rotation.y+=dt*11;
    b.attackPose=Math.max(0,b.attackPose-dt);
    b.pivot.rotation.z=b.attackPose?Math.sin((1-b.attackPose/.42)*Math.PI)*-1.3:0;
@@ -449,7 +441,7 @@ const GF21 = (() => {
   const border=mesh(new T.TorusGeometry(range,.19,5,90),warning,0,.12,0,g);border.rotation.x=-Math.PI/2;
  }
  function fireProjectile(from,to,damage,kind,owner){
-  const start=new T.Vector3(from.x,from.y,from.z),end=new T.Vector3(to.x,to.y,to.z);
+  const start=new T.Vector3(from.x,from.y+floorAt(from.x,from.z),from.z),end=new T.Vector3(to.x,to.y+floorAt(to.x,to.z),to.z);
   const dir=end.clone().sub(start);let length=dir.length();if(length<.01)return;
   const group=new T.Group();group.position.copy(start);scene.add(group);
   let color=kind==='tower'?'#ff974e':'#dfc38a';
@@ -459,33 +451,36 @@ const GF21 = (() => {
   combatProjectiles.push({group,start,end,elapsed:0,duration:Math.max(.17,length/(kind==='tower'?42:32)),damage,owner,target:to.target||null,hero:to.hero||false});
  }
  function tickProjectiles(dt){for(let i=combatProjectiles.length-1;i>=0;i--){let p=combatProjectiles[i];p.elapsed+=dt;let t=Math.min(1,p.elapsed/p.duration);p.group.position.lerpVectors(p.start,p.end,t);p.group.position.y+=Math.sin(t*Math.PI)*.7;
-   if(t>=1){if(p.hero&&hp>0&&Math.hypot(position.x-p.end.x,position.z-p.end.z)<4){let dmg=p.damage;if(performance.now()<shieldUntil)dmg*=.25;hp=Math.max(0,hp-dmg);recallUntil=0}
-    else if(p.target?.alive){p.target.hp-=p.damage;if(p.target.hp<=0){p.target.alive=false;p.target.root.visible=false;if(p.owner?.friendly&&p.target.kind==='minion')awardMinion(p.target)}}
-    scene.remove(p.group);combatProjectiles.splice(i,1)}
+   if(t>=1){if(p.hero&&hp>0&&Math.hypot(position.x-p.end.x,position.z-p.end.z)<4){receiveDamage(p.damage,performance.now())}
+    else if(p.target?.alive){p.target.hp-=p.damage;if(p.target.hp<=0){if(p.target.kind==='titan')endIfTitanDestroyed(p.target);else finishMob(p.target,!!p.owner?.friendly)}}
+    scene.remove(p.group);window.GFDisposeFigure(p.group);combatProjectiles.splice(i,1)}
   }}
  function updateBattleSystems(dt,time){gameTime+=dt;matchElapsed+=dt;if(!matchEnded&&matchElapsed>=30&&(lastWave===0||matchElapsed-lastWave>=27)){lastWave=matchElapsed;spawnWave();$('status').textContent='3 lanes · 5 troops and 1 Vanguard per wave'}
  if(!matchEnded)updateGods(dt,time);
- updateDefenses(dt,time);
+ updateDefenses(dt,time);if(matchEnded)return;
  updateDemonDogs(dt,time);
- const takeDamage=(n)=>{if(hp<=0)return;if(time<shieldUntil)n*=.25;hp=Math.max(0,hp-n);if(n>0)recallUntil=0};
- if(hp>0){if(inSanctuary(position.x,position.z,true))hp=Math.min(maxHp,hp+dt*90);else hp=Math.min(maxHp,hp+dt*.65);if(recallUntil&&time>=recallUntil){position.x=laneX(0,16);position.z=16;recallUntil=0;$('status').textContent='Returned to sanctuary · healing'}}else if(time>respawnAt){hp=maxHp;respawnAt=0;position.x=laneX(0,16);position.z=16;$('status').textContent='Respawned at sanctuary'}
+ const takeDamage=n=>receiveDamage(n,time);
+ if(hp>0){if(inSanctuary(position.x,position.z,true))hp=Math.min(maxHp,hp+dt*90);else hp=Math.min(maxHp,hp+dt*.65);if(recallUntil&&time>=recallUntil){position.x=laneX(0,16);position.z=16;recallUntil=0;$('status').textContent='Returned to sanctuary · healing'}}else if(respawnAt&&time>=respawnAt){hp=maxHp;respawnAt=0;position.x=laneX(0,16);position.z=16;$('status').textContent='Respawned at sanctuary'}
  for(let m of mobs){if(!m.alive)continue;if(m.kind==='ally'||m.kind==='minion'){if(time<(m.stunnedUntil||0))continue;const dir=m.friendly?1:-1,range=m.role==='archer'?11:m.role==='vanguard'?4.4:3.8;
  const blocking=mobs.filter(o=>o.alive&&o.kind==='tower'&&o.friendly!==m.friendly&&o.lane===m.lane).sort((a,b)=>m.friendly?a.z-b.z:b.z-a.z)[0];
  const barrier=blocking&&dir*(blocking.z-m.z)>-3?blocking:null;
  const barrierDistance=barrier?Math.hypot(barrier.x-m.x,barrier.z-m.z):Infinity;
  let target=mobs.find(o=>o.alive&&o.friendly!==m.friendly&&o.kind!=='tower'&&Math.hypot(o.x-m.x,o.z-m.z)<range);
  if(!target&&barrier&&barrierDistance<Math.max(range+5,13))target=barrier;
+ if(!target&&!blocking)target=baseStructures.find(t=>t.alive&&t.friendly!==m.friendly&&Math.hypot(t.x-m.x,t.z-m.z)<range+7);
  let heroTarget=!m.friendly&&hp>0&&Math.hypot(position.x-m.x,position.z-m.z)<range&&!target;
  if(!target&&!heroTarget){const nextZ=m.z+dir*dt*m.speed;
  m.z=barrier?dir>0?Math.min(nextZ,barrier.z-3):Math.max(nextZ,barrier.z+3):nextZ;
- m.x=laneApproach(m.lane??0,m.z,m.friendly);m.root.position.set(m.x,0,m.z);if(time<(m.spawnSpinUntil||0))m.root.rotation.y+=dt*12}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?2.1:m.role==='vanguard'?1.7:1.35;let damage=m.damage||4;m.attackPose=.42;if(m.role==='archer'){
+ m.x=laneApproach(m.lane??0,m.z,m.friendly);m.root.position.set(m.x,floorAt(m.x,m.z),m.z);if(time<(m.spawnSpinUntil||0))m.root.rotation.y+=dt*12}else{m.attackClock=(m.attackClock||0)-dt;if(m.attackClock<=0){m.attackClock=m.role==='archer'?2.1:m.role==='vanguard'?1.7:1.35;let damage=m.damage||4;m.attackPose=.42;if(m.role==='archer'){
   let aim=target?{x:target.x,y:2.3,z:target.z,target}:{x:position.x,y:2.2,z:position.z,hero:true};
   fireProjectile({x:m.x,y:2.8,z:m.z},aim,damage,'arrow',m);
- }else if(target){target.hp-=damage;if(target.hp<=0){if(target.kind==='tower'){finishMob(target,m.friendly);$('status').textContent='TOWER DESTROYED · LANE UNLOCKED'}else{target.alive=false;target.root.visible=false;if(m.friendly&&target.kind==='minion')awardMinion(target)}}}else if(heroTarget)takeDamage(damage)}}
+ }else if(target){target.hp-=damage;if(target.hp<=0){if(target.kind==='titan'){endIfTitanDestroyed(target)}else if(target.kind==='tower'){finishMob(target,m.friendly);$('status').textContent='TOWER DESTROYED · LANE UNLOCKED'}else{target.alive=false;target.root.visible=false;if(m.friendly&&target.kind==='minion')awardMinion(target)}}}else if(heroTarget)takeDamage(damage)}}
  if(m.z<3||m.z>641){m.alive=false;m.root.visible=false;continue}}
  }
  tickProjectiles(dt);
- for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot){const t=1-m.attackPose/.42;m.weaponPivot.rotation.z=m.role==='archer'?Math.sin(t*Math.PI)*.5:-Math.sin(t*Math.PI)*(m.role==='vanguard'?1.6:1.25);if(m.arrow)m.arrow.position.z=.2-Math.sin(t*Math.PI)*.35;}m.root.rotation.y=Math.sin((1-m.attackPose/.42)*Math.PI)*.22*(m.friendly?1:-1)}}
+ for(const m of mobs){if(m.alive&&m.attackPose>0){m.attackPose=Math.max(0,m.attackPose-dt);if(m.weaponPivot){const t=1-m.attackPose/.42;m.weaponPivot.rotation.z=m.role==='archer'?Math.sin(t*Math.PI)*.5:-Math.sin(t*Math.PI)*(m.role==='vanguard'?1.6:1.25);if(m.arrow)m.arrow.position.z=.2-Math.sin(t*Math.PI)*.35;}m.root.rotation.y=(m.friendly?0:Math.PI)+Math.sin((1-m.attackPose/.42)*Math.PI)*.22}}
+ if(matchEnded)return;
+ if(time-lastCleanup>5000){lastCleanup=time;mobs=mobs.filter(m=>{if(m.kind==='tower'||m.alive)return true;scene.remove(m.root);window.GFDisposeFigure(m.root);return false;});}
  if(hp<=0&&!respawnAt){respawnAt=time+7000;$('status').textContent='Defeated · respawning in 7 seconds'}
  if(shopPanel&&!shopPanel.hidden){
   const available=inSanctuary(position.x,position.z,true);
@@ -497,6 +492,8 @@ const GF21 = (() => {
   const c=window.gfGetConfig?.()||{},groups=window.GFRegionalAbilities?.[c.heritage||'japan'];
   if(groups){window.gf43HudRegion=hudKey;for(let i=0;i<3;i++){const selected=groups[i].find(a=>a[0]===c['ability'+(i+1)])||groups[i][0];const button=$('s'+(i+1));if(button){button.dataset.label=selected[0];button.title=selected[0]+' — '+selected[1];button.setAttribute('aria-label',button.title);button.dataset.abilityName=selected[0]}}}
  }
+ $('hp').style.width=(Math.max(0,hp)/maxHp*100)+'%';$('combo-indicator').textContent=hp<=0?'RESPAWN '+Math.max(0,Math.ceil((respawnAt-time)/1000))+'s':leap?'SKY LEAP':strike?'COMBO '+strike+' / 3':'ATTACK · 3-HIT COMBO';
+ const ub=$('s4'),ul=Math.max(0,(utilityCooldown-time)/1000);ub.textContent=ul>0?Math.ceil(ul):'↟';ub.dataset.label=window.gfGetConfig?.().ability4||'Wind Dash';ub.setAttribute('aria-label',ub.dataset.label);
  if(baseHud){let bossHud=$('gf45BossHP');if(!bossHud){bossHud=document.createElement('span');bossHud.id='gf45BossHP';bossHud.style.cssText='background:#42191cde;border:1px solid #e98e54;border-radius:8px;padding:7px 10px;color:#ffe2bd';baseHud.append(bossHud)}
  const enemyBoss=baseStructures.find(t=>!t.friendly);bossHud.textContent=enemyBoss?.alive?'TITAN '+Math.max(0,Math.ceil(enemyBoss.hp))+'/'+enemyBoss.max:'TITAN DEFEATED';
  $('gf35Timer').textContent=matchEnded?'MATCH OVER':matchElapsed<30?'WAVE 0:'+String(Math.ceil(30-matchElapsed)).padStart(2,'0'):'NEXT '+Math.max(0,Math.ceil(27-(matchElapsed-lastWave)))+'s';$('gf27HP').textContent=`HP ${Math.ceil(hp)}/${maxHp}`;$('gf27Gold').textContent=`${gold} GOLD`;$('gf27Level').textContent=`LV ${level} · ${kills} KILLS`}
@@ -506,14 +503,14 @@ const GF21 = (() => {
  // deal more damage than lane minions, and respawn after defeat.
  function makeDemonDogs(){
   const dark=material('#24252c'),hide=material('#43343a'),fang=material('#e8d6c4'),glow=new T.MeshStandardMaterial({color:'#f05e55',emissive:'#d51e23',emissiveIntensity:2});
-  for(const side of [-1,1])for(const z of [215,405]){
+  for(const side of [-1,1])for(const z of GFWorldRules.dogs.campZ){
    const x=side*46,radius=18;
    const approach=mesh(new T.PlaneGeometry(94,13),material('#526748'),x,.045,z);approach.rotation.x=-Math.PI/2;
    const zone=mesh(new T.CircleGeometry(radius,40),new T.MeshStandardMaterial({color:'#23432b',transparent:true,opacity:.76,side:T.DoubleSide}),x,.06,z);zone.rotation.x=-Math.PI/2;
    const rim=mesh(new T.TorusGeometry(radius,.32,6,64),material('#8e6b48'),x,.15,z);rim.rotation.x=Math.PI/2;
    for(let i=0;i<28;i++){const a=i*Math.PI*2/28,rr=radius-2.3;const grass=mesh(new T.ConeGeometry(.4,1.7,4),material(i%2?'#385e39':'#4b7744'),x+Math.cos(a)*rr,.8,z+Math.sin(a)*rr);grass.rotation.z=Math.sin(a)*.24}
-   for(let i=0;i<2;i++){
-    const root=new T.Group();scene.add(root);
+   for(let i=0;i<GFWorldRules.dogs.perCamp;i++){
+    const root=new T.Group();root.userData.dynamic=true;scene.add(root);const alpha=i===3;root.scale.setScalar(alpha?1.35:1);
     const body=mesh(new T.SphereGeometry(1.05,10,8),hide,0,1.1,0,root);body.scale.set(.72,.75,1.5);
     mesh(new T.SphereGeometry(.64,10,8),dark,0,1.35,1.23,root);
     for(const sx of [-1,1]){const ear=mesh(new T.ConeGeometry(.23,.7,5),dark,sx*.42,1.99,1.2,root);ear.rotation.z=sx*.2;mesh(new T.SphereGeometry(.13,7,6),glow,sx*.28,1.52,1.77,root);
@@ -521,8 +518,8 @@ const GF21 = (() => {
     }
     for(const sx of [-1,1])mesh(new T.ConeGeometry(.13,.43,5),fang,sx*.25,1.03,1.8,root).rotation.x=Math.PI;
     for(let k=0;k<4;k++)mesh(new T.ConeGeometry(.29,.55,5),dark,0,1.95,-.6+k*.36,root);
-    const dx=(i===0?-4:4),dz=(i===0?-3:3);
-    demonDogs.push({root,homeX:x,homeZ:z,x:x+dx,z:z+dz,radius:radius-2.6,hp:145,max:145,damage:10,alive:true,respawnAt:0,attackClock:.6,attackPose:0});
+    const dx=Math.cos(i*Math.PI/2)*6,dz=Math.sin(i*Math.PI/2)*6;root.position.set(x+dx,0,z+dz);
+    demonDogs.push({root,homeX:x,homeZ:z,x:x+dx,z:z+dz,radius:radius-2.6,hp:alpha?GFWorldRules.dogs.alphaHealth:GFWorldRules.dogs.health,max:alpha?GFWorldRules.dogs.alphaHealth:GFWorldRules.dogs.health,damage:alpha?GFWorldRules.dogs.alphaDamage:GFWorldRules.dogs.damage,alpha,alive:true,respawnAt:0,attackClock:.6,attackPose:0});
    }
   }
  }
@@ -530,18 +527,20 @@ const GF21 = (() => {
   for(const dog of demonDogs){
    if(!dog.alive){if(now<dog.respawnAt)continue;dog.alive=true;dog.hp=dog.max;dog.x=dog.homeX;dog.z=dog.homeZ;dog.root.visible=true}
    let target=null,dist=999;
-   if(hp>0){const d=Math.hypot(position.x-dog.x,position.z-dog.z);if(d<dist&&Math.hypot(position.x-dog.homeX,position.z-dog.homeZ)<dog.radius+3){target={x:position.x,z:position.z,player:true};dist=d}}
+   if(hp>0&&now>(window.gfStealthUntil||0)){const d=Math.hypot(position.x-dog.x,position.z-dog.z);if(d<dist&&Math.hypot(position.x-dog.homeX,position.z-dog.homeZ)<dog.radius+3){target={x:position.x,z:position.z,player:true};dist=d}}
    for(const b of bots)if(b.alive&&Math.hypot(b.x-dog.homeX,b.z-dog.homeZ)<dog.radius+2){const d=Math.hypot(b.x-dog.x,b.z-dog.z);if(d<dist){target=b;dist=d}}
    let tx=target?target.x:dog.homeX+Math.sin(now*.0007+dog.homeZ)*5,tz=target?target.z:dog.homeZ+Math.cos(now*.0007+dog.homeX)*5;
    const distance=Math.hypot(tx-dog.x,tz-dog.z);
-   if(distance>2.8){const move=Math.min(distance-2.5,dt*(target?5.7:2));dog.x+=(tx-dog.x)/distance*move;dog.z+=(tz-dog.z)/distance*move}
+   if(!target)dog.hp=Math.min(dog.max,dog.hp+dt*18);
+   if(distance>2.8&&!dog.pendingBite){const move=Math.min(distance-2.5,dt*(target?5.7:2));dog.x+=(tx-dog.x)/distance*move;dog.z+=(tz-dog.z)/distance*move}
    const homeDistance=Math.hypot(dog.x-dog.homeX,dog.z-dog.homeZ);
    if(homeDistance>dog.radius){dog.x=dog.homeX+(dog.x-dog.homeX)/homeDistance*dog.radius;dog.z=dog.homeZ+(dog.z-dog.homeZ)/homeDistance*dog.radius}
    dog.attackClock-=dt;
-   if(target&&dist<3.5&&dog.attackClock<=0){dog.attackClock=1.45;dog.attackPose=.35;
-    if(target.player)hp=Math.max(0,hp-(now<shieldUntil?dog.damage*.25:dog.damage));
-    else{target.hp=Math.max(0,target.hp-dog.damage);if(!target.hp){target.alive=false;target.root.visible=false;target.respawnAt=now+11000}}
-   }
+   if(target&&dist<4&&dog.attackClock<=0&&!dog.pendingBite){dog.attackClock=1.7;dog.pendingBite={target,at:now+450};dog.attackPose=.45;}
+   if(dog.pendingBite&&now>=dog.pendingBite.at){const t=dog.pendingBite.target;dog.pendingBite=null;const tx=t.player?position.x:t.x,tz=t.player?position.z:t.z;if(Math.hypot(tx-dog.x,tz-dog.z)<4.2){
+    if(t.player&&jumpHeight<1.8)receiveDamage(dog.damage,now);
+    else if(!t.player&&t.alive){t.hp=Math.max(0,t.hp-dog.damage);if(!t.hp){t.alive=false;t.root.visible=false;t.respawnAt=now+11000}}
+   }}
    dog.attackPose=Math.max(0,dog.attackPose-dt);
    dog.root.position.set(dog.x,Math.sin(now*.009+dog.homeZ)*.07+(dog.attackPose?Math.sin(dog.attackPose*9)*.35:0),dog.z);
    if(distance>.01)dog.root.rotation.y=Math.atan2(tx-dog.x,tz-dog.z);
@@ -552,7 +551,8 @@ const GF21 = (() => {
   for(const dog of demonDogs)if(dog.alive){const d=Math.hypot(dog.x-x,dog.z-z);if(d<dist){closest=dog;dist=d}}
   if(!closest)return false;
   closest.hp-=damage;
-  if(closest.hp<=0){closest.alive=false;closest.root.visible=false;closest.respawnAt=performance.now()+30000;gold+=35;xp+=40;$('status').textContent='DEMON HOUND SLAIN · +40 XP · +35 GOLD'}
+  if(closest.hp<=0){closest.alive=false;closest.root.visible=false;closest.respawnAt=performance.now()+GFWorldRules.dogs.respawn;closest.pendingBite=null;gold+=closest.alpha?70:35;xp+=closest.alpha?80:40;$('status').textContent=(closest.alpha?'ALPHA SLAIN · +80 XP · +70 GOLD':'HELL HOUND SLAIN · +40 XP · +35 GOLD')}
+  else $('status').textContent=(closest.alpha?'ALPHA HELL HOUND ':'HELL HOUND ')+Math.ceil(closest.hp)+' / '+closest.max+' HP';
   return true;
  }
  function groundHeight(x,z){return Math.sin(x*.07)*.12+Math.sin(z*.045)*.11}
@@ -578,6 +578,7 @@ const GF21 = (() => {
   buildBases();
   connectBases();
   makeDemonDogs();
+  window.GFOptimizeScenery(T,scene);
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
  function applyStyle(root){window.GFGodAppearance?.(root,T,mesh,material)}
@@ -672,7 +673,7 @@ const GF21 = (() => {
    if(!tower.targetLock||!((tower.targetLock==='player'&&player)||(tower.targetLock!=='player'&&tower.targetLock.alive&&eligible.includes(tower.targetLock))))tower.targetLock=null;
    if(!tower.targetLock){const entrants=eligible.map(o=>({o,at:o.enteredTowerAt?.[tower.towerId]??now}));if(player)entrants.push({o:'player',at:tower.playerEnteredAt??now});entrants.sort((a,b)=>a.at-b.at);tower.targetLock=entrants[0]?.o||null;}
    const enemy=tower.targetLock==='player'?null:tower.targetLock;
-   for(const o of eligible){o.enteredTowerAt??={};o.enteredTowerAt[tower.towerId]??=now}
+   for(const o of targets){o.enteredTowerAt??={};if(eligible.includes(o))o.enteredTowerAt[tower.towerId]??=now;else delete o.enteredTowerAt[tower.towerId]}
    if(player)tower.playerEnteredAt??=now;else tower.playerEnteredAt=null;
    if(!enemy&&tower.targetLock!=='player')continue;
    if(tower.attackClock>0)continue;
@@ -697,7 +698,7 @@ const GF21 = (() => {
    if(target&&titan.attackClock<=0){
     titan.attackClock=enraged?.85:1.5;titan.attackPhase=now;titan.attackStyle=(titan.attackStyle+1)%3;
     const damage=enraged?70:52;
-    if(target.player)hp=Math.max(0,hp-(now<shieldUntil?damage*.25:damage));
+    if(target.player)receiveDamage(damage,now);
     else {target.hp-=damage;if(target.hp<=0){if(target.kind==='ally'||target.kind==='minion')finishMob(target,false);else{target.alive=false;target.root.visible=false;target.respawnAt=now+11000}}}
     const pulse=new T.Mesh(new T.RingGeometry(1.8,5.5,40),new T.MeshBasicMaterial({color:enraged?'#ff4225':'#f5a35d',transparent:true,opacity:.82,side:T.DoubleSide,depthWrite:false}));
     pulse.position.set(titan.x,.25,titan.z);pulse.rotation.x=-Math.PI/2;scene.add(pulse);effects.push({mesh:pulse,ttl:.55,max:.55});
@@ -709,7 +710,7 @@ const GF21 = (() => {
     const radius=style===0?16:style===1?9:12,damage=style===2?85:65;
     const aoe=new T.Mesh(new T.RingGeometry(radius-1,radius,64),new T.MeshBasicMaterial({color:style===0?'#f75c3e':style===1?'#eac36b':'#ba6eff',transparent:true,opacity:.9,side:T.DoubleSide,depthWrite:false}));
     aoe.rotation.x=-Math.PI/2;aoe.position.set(centerX,.23,centerZ);scene.add(aoe);effects.push({mesh:aoe,ttl:1.1,max:1.1});
-    if(player&&Math.hypot(position.x-centerX,position.z-centerZ)<radius)hp=Math.max(0,hp-(now<shieldUntil?damage*.25:damage));
+    if(player&&Math.hypot(position.x-centerX,position.z-centerZ)<radius)receiveDamage(damage,now);
     for(const o of hostiles)if(Math.hypot(o.x-centerX,o.z-centerZ)<radius){o.hp-=damage;if(o.hp<=0){if(o.kind==='ally'||o.kind==='minion')finishMob(o,false);else{o.alive=false;o.root.visible=false;o.respawnAt=now+11000}}}
     $('status').textContent=['TITAN FURY · SHOCKWAVE','TITAN WRATH · METEOR STRIKE','TITAN RAGE · VOID BURST'][style];
    }
@@ -719,7 +720,7 @@ const GF21 = (() => {
   for(const b of bots)if(b.alive&&inSanctuary(b.x,b.z,!b.friendly)){b.hp=0;b.alive=false;b.root.visible=false;b.respawnAt=now+11000}
   if(hp>0&&inSanctuary(position.x,position.z,false)){hp=0;$('status').textContent='ENEMY SANCTUARY · LETHAL WATERS'}
  }
- function collision(x,z){if(z<55||z>589)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);let jungleEntry=demonDogs.some(d=>Math.abs(z-d.homeZ)<7&&Math.abs(x-d.homeX)<49);return !(nearest||crossing||camp||grass||jungleEntry)}
+ function collision(x,z){if(Math.abs(x)>110||z<4||z>640)return true;if(z<55||z>589)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);let jungleEntry=demonDogs.some(d=>Math.abs(z-d.homeZ)<7&&Math.abs(x-d.homeX)<49);return !(nearest||crossing||camp||grass||jungleEntry)}
 
  // Animated physical weapon, attached to the character's hand position, not the VFX.
  function buildPhysicalWeapon(type){
@@ -755,7 +756,47 @@ const GF21 = (() => {
  }
   async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xc6d9f3,0x251b20,2.2));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);scene.add(sun);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;$('fallback').classList.remove('show');requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;$('fallback').textContent='Battle rendering needs WebGL 2. Open the game in a supported browser with graphics acceleration enabled.';$('fallback').classList.add('show');console.error(e)}}
  // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
- function hit(){if(!active||hp<=0||shopPanel&&!shopPanel.hidden)return;
+ function receiveDamage(amount,now=performance.now()){
+  if(hp<=0||matchEnded)return;hp=Math.max(0,hp-amount*(now<shieldUntil?.25:1));recallUntil=0;
+  if(!hp){respawnAt=now+7000;leap=null;jumpHeight=0;$('status').textContent='Defeated · respawning in 7 seconds';}
+ }
+ function coreExposed(friendly){return [-1,0,1].some(lane=>!mobs.some(m=>m.alive&&m.kind==='tower'&&m.friendly===friendly&&m.lane===lane));}
+ function tickLeap(dt){
+  if(!leap){jumpHeight=0;return}if(hp<=0){leap=null;jumpHeight=0;return}
+  leap.elapsed=Math.min(leap.duration,leap.elapsed+dt);const t=leap.elapsed/leap.duration,p=GFWorldRules.leapPoint(leap.from,leap.to,t);position.x=p.x;position.z=p.z;jumpHeight=p.y;
+  if(t>=1){leap=null;jumpHeight=0;combatForge?.utility('Sky Leap',position.x,position.z,yaw);$('status').textContent='SKY LEAP · landed';}
+ }
+ function resetMatch(){
+  document.getElementById('gf43-match-end')?.remove();
+  for(const p of combatProjectiles){scene.remove(p.group);GFDisposeFigure(p.group)}combatProjectiles=[];
+  for(const e of effects){scene.remove(e.mesh);GFDisposeFigure(e.mesh)}effects=[];
+  for(const e of summons){scene.remove(e.mesh);GFDisposeFigure(e.mesh)}summons=[];
+  mobs=mobs.filter(m=>{if(m.kind==='tower'){m.hp=m.max;m.alive=true;m.root.visible=true;m.targetLock=null;m.playerEnteredAt=null;m.attackClock=0;return true}scene.remove(m.root);GFDisposeFigure(m.root);return false});
+  for(const t of baseStructures){t.alive=true;t.hp=t.max;t.root.visible=true;t.attackClock=1.4;t.skillClock=4;t.pendingSkill=null;}
+  for(const b of bots){b.alive=true;b.hp=b.max;b.x=laneX(0,b.friendly?16:628);b.z=b.friendly?16:628;b.root.position.set(b.x,floorAt(b.x,b.z),b.z);b.root.visible=true;b.attackClock=1;b.spellClock=4;b.respawnAt=0;b.enteredTowerAt={};b.stunnedUntil=0;}
+  for(const d of demonDogs){d.alive=true;d.hp=d.max;d.x=d.homeX;d.z=d.homeZ;d.root.visible=true;d.pendingBite=null;d.attackClock=.7;d.respawnAt=0;}
+  for(const b of buffs){b.alive=true;b.respawn=0;b.orb.visible=true;}
+  hp=maxHp=350;gold=500;xp=0;level=1;kills=0;ownedItems={};powerBonus=armorBonus=0;recallUntil=respawnAt=utilityCooldown=shieldUntil=speedBuffUntil=attackReadyAt=0;window.gfStealthUntil=0;
+  abilityReady=[0,0,0];matchEnded=false;active=true;matchElapsed=lastWave=gameTime=0;lastCleanup=0;leap=null;jumpHeight=0;strike=0;yaw=0;pitch=.16;position={x:laneX(0,24),z:24};prev=0;shopPanel.hidden=true;window.gf43HudRegion='';updateShop();combatForge?.tick(100);
+ }
+ function drawMinimap(){
+  const c=$('mini').getContext('2d'),w=105,h=105,px=x=>52+x*.43,pz=z=>101-z*.15;c.clearRect(0,0,w,h);c.fillStyle='#10221d';c.fillRect(0,0,w,h);c.strokeStyle='#928878';c.lineWidth=2;
+  for(let l=-1;l<=1;l++){c.beginPath();for(let z=4;z<=640;z+=4){const x=px(laneX(l,z)),y=pz(z);z===4?c.moveTo(x,y):c.lineTo(x,y)}c.stroke();}
+  for(const z of [24,125,310,510,620]){c.beginPath();c.moveTo(px(-100),pz(z));c.lineTo(px(100),pz(z));c.stroke();}
+  for(const b of GFWorldRules.bridges){c.fillStyle='#d6b27a';c.fillRect(px(b.x)-2,pz(b.z)-2,4,4);}
+  for(const m of [...mobs,...baseStructures])if(m.alive){c.fillStyle=m.friendly?'#6ecbe0':'#e8686a';const r=m.kind==='tower'||m.kind==='titan'?2:1;c.fillRect(px(m.x)-r,pz(m.z)-r,r*2,r*2);}
+  for(const d of demonDogs)if(d.alive){c.fillStyle='#b78bd5';c.fillRect(px(d.homeX)-1,pz(d.homeZ)-1,2,2);}
+  c.fillStyle='#ffeda0';c.beginPath();c.arc(px(position.x),pz(position.z),2.8,0,Math.PI*2);c.fill();
+ }
+ function updateHealthBars(){
+  for(const e of [...mobs,...bots,...demonDogs]){
+   if(!e.alive){if(e.healthBar)e.healthBar.visible=false;continue}
+   const near=Math.hypot(e.x-position.x,e.z-position.z)<65;
+   if(!e.healthBar&&near){const bar=new T.Group();const back=mesh(new T.PlaneGeometry(2.5,.2),new T.MeshBasicMaterial({color:'#1a1315',depthTest:false}),0,0,0,bar);const fill=mesh(new T.PlaneGeometry(2.4,.12),new T.MeshBasicMaterial({color:e.friendly?'#63c6a4':e.alpha?'#e7a25c':'#d46b71',depthTest:false}),0,0,.01,bar);bar.userData.fill=fill;bar.position.y=e.kind==='tower'?18:e.homeX!==undefined?3:4.4;bar.renderOrder=10;e.root.add(bar);e.healthBar=bar;}
+   if(e.healthBar){e.healthBar.visible=near;e.healthBar.quaternion.copy(e.root.quaternion.clone().invert().multiply(camera.quaternion));const ratio=Math.max(0,e.hp/e.max);e.healthBar.userData.fill.scale.x=ratio;e.healthBar.userData.fill.position.x=-1.2*(1-ratio);}
+  }
+ }
+ function hit(){if(!active||matchEnded||leap||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<attackReadyAt)return;attackReadyAt=now+(window.gfGetConfig?.().weapon==='War Axe'?630:460);
   recallUntil=0;strike=(strike%3)+1;attackTime=.46;weaponAttackStep=strike;weaponAttackAge=0;
   const weapon=window.gfGetConfig?.().weapon||'Greatsword';
   const reaches={Greatsword:6.1,'War Axe':5.5,Spear:7.2,Staff:6.8,'Dual Blades':4.9};
@@ -772,7 +813,7 @@ const GF21 = (() => {
   // Gods and final Titan can be targeted by the same basic attacks.
   let special=null;
   for(const bot of bots)if(bot.alive&&!bot.friendly){const d=Math.hypot(bot.x-position.x,bot.z-position.z);if(d<dist){const facing=((bot.x-position.x)*fX+(bot.z-position.z)*fZ)/Math.max(.001,d);if(facing>.24){special=bot;best=null;dist=d}}}
-  for(const titan of baseStructures)if(titan.alive&&!titan.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&!m.friendly&&m.lane===Math.round(position.x/95))){const d=Math.hypot(titan.x-position.x,titan.z-position.z);if(d<dist){special=titan;best=null;dist=d}}
+  for(const titan of baseStructures)if(titan.alive&&!titan.friendly&&coreExposed(false)){const d=Math.hypot(titan.x-position.x,titan.z-position.z);if(d<dist){special=titan;best=null;dist=d}}
   if(!best&&!special)damageDemonDog(position.x+fX*3,position.z+fZ*3,(strike===3?44:25)+powerBonus,5);
   combatForge?.attack(weapon,strike,best?{x:best.x,z:best.z}:special?{x:special.x,z:special.z}:null);
   if(special){special.hp-=(strike===3?55:30)+powerBonus*.4;if(special.kind==='titan')endIfTitanDestroyed(special);else if(special.hp<=0){special.alive=false;special.root.visible=false;special.respawnAt=performance.now()+11000;gainGold(85);kills++}
@@ -786,7 +827,7 @@ const GF21 = (() => {
  function spellPart(geometry,mat,x,y,z,group){return mesh(geometry,mat,x,y,z,group)}
  let abilityReady=[0,0,0],summons=[];
  function cast(which){
-  if(!active||matchEnded||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
+  if(!active||matchEnded||leap||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
   const cfg=window.gfGetConfig?.()||{},regional=window.GFRegionalAbilities?.[cfg.heritage||'japan'],selected=regional?.[which]?.some(x=>x[0]===cfg['ability'+(which+1)])?cfg['ability'+(which+1)]:regional?.[which]?.[0]?.[0],name=selected||cfg['ability'+(which+1)]||'Cinder Fan';
  const pool={Cone:['Cinder Fan','Glacier Breath','Dread Howl'],Line:['Storm Lance','Rift Spear','Solar Rail'],Placement:['Grave Circle','Forge Turret','Verdant Snare']};
  const meta=window.GFRegionalAbilityMeta?.[name],type=meta?.category||Object.keys(pool).find(k=>pool[k].includes(name))||'Cone';abilityReady[which]=now+(meta?.cooldown||(type==='Placement'?11500:7000));recallUntil=0;
@@ -805,7 +846,7 @@ const GF21 = (() => {
    let dmg=meta?.damage||(type==='Line'?65:type==='Cone'?43:35); if(name==='Solar Rail')dmg=90;if(meta?.stun)m.stunnedUntil=now+(type==='Placement'?1700:1050);if(name==='Dread Howl')m.stunnedUntil=now+1100;if(name==='Glacier Breath'||name==='Verdant Snare')m.stunnedUntil=now+1700;
    m.hp-=dmg+powerBonus;hitCount++;if(m.hp<=0)finishMob(m,true)
   }
-  for(const enemy of [...bots.filter(b=>b.alive&&!b.friendly),...baseStructures.filter(t=>t.alive&&!t.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&!m.friendly))]){
+  for(const enemy of [...bots.filter(b=>b.alive&&!b.friendly),...baseStructures.filter(t=>t.alive&&!t.friendly&&coreExposed(false))]){
    const dx=enemy.x-originX,dz=enemy.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX);
    const struck=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(enemy.x-tx,enemy.z-tz)<6;
    if(!struck)continue;
@@ -821,22 +862,25 @@ const GF21 = (() => {
   }
   $('status').textContent=name.toUpperCase()+' · '+(meta?.damage||43)+' DAMAGE · '+hitCount+' HITS';
  }
- function frame(time){requestAnimationFrame(frame);for(const t of summons){if(time>t.until){scene.remove(t.mesh);continue}if(time<t.next)continue;t.next=time+800;let target=mobs.find(m=>m.alive&&!m.friendly&&Math.hypot(m.x-t.x,m.z-t.z)<14);if(target){target.hp-=18+powerBonus*.3;if(target.hp<=0){target.alive=false;target.root.visible=false;gainGold(45)}}}summons=summons.filter(t=>time<t.until);if(!active||!renderer)return;let dt=Math.min(.04,(time-(prev||time))/1000);prev=time;const v=window.gfGetConfig?.();let j=window.joystick||null; // legacy joystick is lexical; bridge below supplies it.
- const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=-input.x; // Phase 22: horizontal stick reversed; vertical unchanged
+ function frame(time){requestAnimationFrame(frame);if(!active||matchEnded||!renderer||document.hidden){prev=time;return}for(const t of summons){if(time>t.until){scene.remove(t.mesh);continue}if(time<t.next)continue;t.next=time+800;let target=mobs.find(m=>m.alive&&!m.friendly&&Math.hypot(m.x-t.x,m.z-t.z)<14);if(target){target.hp-=18+powerBonus*.3;if(target.hp<=0){target.alive=false;target.root.visible=false;gainGold(45)}}}summons=summons.filter(t=>time<t.until);if(!active||!renderer)return;let dt=Math.min(.04,(time-(prev||time))/1000);prev=time;const v=window.gfGetConfig?.();let j=window.joystick||null; // legacy joystick is lexical; bridge below supplies it.
+ const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=input.x;if(battleKeys.has('w')||battleKeys.has('s'))forward=(battleKeys.has('w')?1:0)-(battleKeys.has('s')?1:0);if(battleKeys.has('a')||battleKeys.has('d'))strafe=(battleKeys.has('d')?1:0)-(battleKeys.has('a')?1:0);if(battleKeys.has('arrowleft'))yaw-=dt*1.8;if(battleKeys.has('arrowright'))yaw+=dt*1.8;const inputLength=Math.hypot(forward,strafe);if(inputLength>1){forward/=inputLength;strafe/=inputLength;} // Phase 22: horizontal stick reversed; vertical unchanged
  let speed=dt*15*(time<speedBuffUntil?1.25:1)*(ownedItems[5]?1+ownedItems[5]*.08:1);let dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed,dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed;
- if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0||shopPanel&&!shopPanel.hidden){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(4,Math.min(640,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
- refreshHeritage();modelRoot.position.set(position.x,Math.sin(time*.009)*.045,position.z);modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
- let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
+ if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0||leap||shopPanel&&!shopPanel.hidden){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(4,Math.min(640,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
+ tickLeap(dt);refreshHeritage();modelRoot.position.set(position.x,floorAt(position.x,position.z)+jumpHeight+Math.sin(time*.009)*.025,position.z);modelRoot.visible=hp>0;modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
+ let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);const eyeHeight=floorAt(position.x,position.z)+jumpHeight*.55;camera.position.set(position.x-dirX*back,eyeHeight+4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,eyeHeight+2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
  combatForge?.tick(dt);
- tickSanctuaries(dt,time);
+ tickSanctuaries(dt,time);witchwood?.tick(time);drawMinimap();updateHealthBars();
  for(let i=0;i<3;i++){const b=$('s'+(i+1)),left=Math.max(0,(abilityReady[i]-time)/1000);b.textContent=left>0?Math.ceil(left):['Ⅰ','Ⅱ','Ⅲ'][i];b.style.opacity=left>0?'.55':'1';b.dataset.cooling=left>0?'true':'false';}
  if(baseFountain?.userData.heart){baseFountain.userData.heart.rotation.y+=dt*.6;baseFountain.userData.heart.position.y=1.55+Math.sin(time*.0017)*.35;}
  for(let b of buffs){if(b.alive){b.orb.visible=true;b.orb.rotation.y+=dt;b.orb.position.y=2.3+Math.sin(time*.003+b.x)*.25;if(Math.hypot(position.x-b.x,position.z-b.z)<3){b.alive=false;b.respawn=time+45000;b.orb.visible=false;if(b.kind==='SPEED')speedBuffUntil=time+20000;$('status').textContent=b.kind+' JUNGLE BUFF ACQUIRED · +25% movement for 20s'}}else if(time>b.respawn)b.alive=true}
  for(let e of effects){e.ttl-=dt;let progress=1-e.ttl/e.max;e.mesh.scale.setScalar(.72+progress*.38);if(e.spell===0)e.mesh.rotation.y+=dt*1.8;if(e.spell===2)e.mesh.rotation.y+=dt*.4;e.mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.transparent){o.material.opacity=Math.max(0,1-progress)*(.7)}});if(e.ttl<=0){scene.remove(e.mesh);e.mesh.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material.dispose)o.material.dispose()}})}}effects=effects.filter(e=>e.ttl>0);
  let w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h){if(canvas.width!==Math.round(w*renderer.getPixelRatio())||canvas.height!==Math.round(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}renderer.render(scene,camera)} }
+ const battleKeys=new Set();
+ window.addEventListener('keydown',e=>{if(!active||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();battleKeys.add(k);if([' ','q','e','r','f','arrowleft','arrowright'].includes(k))e.preventDefault();if(e.repeat)return;if(k===' ')hit();if(k==='q')cast(0);if(k==='e')cast(1);if(k==='r')cast(2);if(k==='f')utility();});
+ window.addEventListener('keyup',e=>battleKeys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>battleKeys.clear());
  canvas.addEventListener('pointerdown',e=>{look={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(!look||look.id!==e.pointerId)return;let dx=e.clientX-look.x,dy=e.clientY-look.y;yaw+=dx*.006;pitch=Math.max(-.5,Math.min(.5,pitch-dy*.003));look.x=e.clientX;look.y=e.clientY});canvas.addEventListener('pointerup',()=>look=null);canvas.addEventListener('pointercancel',()=>look=null);
  for(let [id,fn] of [['attack',hit],['s1',()=>cast(0)],['s2',()=>cast(1)],['s3',()=>cast(2)],['s4',utility]])$(id).addEventListener('pointerdown',e=>{if(!active)return;e.stopImmediatePropagation();e.preventDefault();fn()},true);
- const observer=new MutationObserver(()=>{let show=$('battle').classList.contains('active');if(show){canvas.style.display='block';active=true;window.gf21Active=true;window.playing=false;init()}else{active=false;canvas.style.display='none'}});observer.observe($('battle'),{attributes:true,attributeFilter:['class']});
+ const observer=new MutationObserver(()=>{let show=$('battle').classList.contains('active');if(show){canvas.style.display='block';active=true;window.gf21Active=true;window.playing=false;if(initialized&&(window.gfNewMatchRequested||matchEnded))resetMatch();window.gfNewMatchRequested=false;prev=0;init()}else{active=false;canvas.style.display='none'}});observer.observe($('battle'),{attributes:true,attributeFilter:['class']});
  return {getGod,fitGLB,applyStyle};
 })();

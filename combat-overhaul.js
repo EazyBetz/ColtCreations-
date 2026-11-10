@@ -208,7 +208,7 @@
       register(g,name==='Forge Turret'?.95:.78,{expand:name==='Dread Howl'?.35:.13});
     }
     function regionalAbility(name,meta,x,z,yaw,tx,tz){
-      const g=new T.Group();scene.add(g);g.position.set(x,0,z);g.rotation.y=yaw;
+      const g=new T.Group();scene.add(g);g.position.set(x,window.GFWorldRules?.surfaceHeight(x,z)||0,z);g.rotation.y=yaw;
       const palettes={japan:'#f2a1ac',china:'#f5b24d',norse:'#a5deef',greece:'#f9d48c',egypt:'#e6c06a',europe:'#9ebdde'};
       const fire=/fire|flame|inferno|dragon|phoenix|solar|sunbeam/i.test(name),ice=/frost/i.test(name),lightning=/bolt|thunder|zeus|raijin|storm/i.test(name);
       const c=fire?'#ff8b32':ice?'#b4edff':lightning?'#98dfff':palettes[meta.region];
@@ -223,7 +223,7 @@
         for(let i=0;i<3;i++){const arc=addMesh(g,new T.TorusGeometry(4+i*3,.08+i*.025,6,36,1.2),c,.7,0,.6+i*.5,0);arc.rotation.set(Math.PI/2,0,Math.PI/2-.6);}
         for(let i=0;i<48;i++){const d=1+(i%12)*.85,side=Math.sin(i*9)*d*.58;const m=ice?shard(g,side,.4+(i%4)*.45,d,c,.17):addMesh(g,new T.SphereGeometry(.09+(i%3)*.06,6,5),i%3?c:'#fff3ce',.85,side,.3+(i%5)*.38,d);if(fire)m.scale.y=3;flecks.push(m);}
       }else{
-        g.position.set(tx,0,tz);g.rotation.y=0;
+        g.position.set(tx,window.GFWorldRules?.surfaceHeight(tx,tz)||0,tz);g.rotation.y=0;
         ring(g,5.85,c,.18,0,.7);ring(g,5.3,c,.2,0,.35);
         for(let i=0;i<12;i++){const a=i*TAU/12;const m=shard(g,Math.cos(a)*5,.7,Math.sin(a)*5,c,.3);flecks.push(m);}
         const core=addMesh(g,new T.OctahedronGeometry(.65,1),c,.9,0,2.4,0);flecks.push(core);
@@ -232,7 +232,7 @@
       const e=register(g,meta.category==='Placement'?1.6:.65,{expand:0});e.opts.flecks=flecks;
     }
     function utility(name,x,z,yaw) {
-      const g=new T.Group();g.position.set(x,0,z);g.rotation.y=yaw;scene.add(g);
+      const g=new T.Group();g.position.set(x,window.GFWorldRules?.surfaceHeight(x,z)||0,z);g.rotation.y=yaw;scene.add(g);
       let c='#a8c8ff';
       if(name==='Heal'){c='#88ffc2';for(let i=0;i<9;i++)shard(g,Math.cos(i*2.4)*1.3,1+(i%4)*.55,Math.sin(i*2.4)*1.3,c,.22);}
       else if(name==='Shield'){c='#78c9ff';for(let i=0;i<3;i++){const halo=addMesh(g,new T.TorusGeometry(1.6+i*.22,.075,6,40),c,.68,0,1.3+i*.55,0);halo.rotation.x=Math.PI/2;}}

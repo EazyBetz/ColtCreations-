@@ -7,24 +7,34 @@ window.GFHeritages={
  egypt:{name:'Egypt',title:'Wardens of the sun',mark:'☀',color:'#d0ad66',metal:'#a3874b',cloth:'#ded0a7',description:'Linen, bronze scales and sunlit ceremonial accents.',armor:[['linen','Desert guard','Layered linen · leather harness','cloth'],['scales','Royal scale armor','Bronze scales · linen kilt','scale'],['pharaoh','Sun warden','Scale cuirass · broad ceremonial collar','scale']],weapons:[['khopesh','Khopesh','Sickle-shaped bronze sword','Greatsword'],['egyptspear','Bronze spear','Long haft · leaf-shaped point','Spear'],['mace','Flanged mace','Weighted head · crushing strikes','War Axe']]},
  europe:{name:'Medieval Europe',title:'The iron covenant',mark:'✠',color:'#c3b795',metal:'#7e8993',cloth:'#263c64',description:'Tempered steel, tailored mail and articulated plate.',armor:[['gambeson','Knight’s gambeson','Quilted coat · mail collar','cloth'],['hauberk','Mail hauberk','Interlinked mail · cloth surcoat','mail'],['gothic','Gothic plate','Fluted cuirass · articulated limbs','plate']],weapons:[['longsword','Longsword','Double-edged blade · two-hand grip','Greatsword'],['halberd','Halberd','Axe blade and spear point','Spear'],['warhammer','War hammer','Steel hammer face · armor pick','War Axe']]}
 };
-window.GFResolveHeritage=function(c){const h=GFHeritages[c.heritage]||GFHeritages.japan;return {h,armor:h.armor.find(x=>x[0]===c.heritageArmor)||h.armor[0],weapon:h.weapons.find(x=>x[0]===c.heritageWeapon)||h.weapons[0]}};
-window.GFNormalizeHeritage=function(c){if(!GFHeritages[c.heritage])c.heritage='japan';const {h,armor,weapon}=GFResolveHeritage(c);c.heritageArmor=armor[0];c.heritageWeapon=weapon[0];c.weapon=weapon[3];c.armor=armor[1];return c};
-window.GFLoadoutKey=c=>JSON.stringify([c.heritage,c.heritageArmor,c.heritageWeapon,c.sex,c.body,c.skin,c.hairColor,c.armorColor,c.trimColor,c.clothColor,c.heritageHelmet]);
+// Helmet choices are independent of armor. All three materials are editable.
+const helmetCatalog={
+ japan:[['kabuto','Crescent kabuto','Layered neck guard · crescent crest'],['oni','Oni menpō','Full demon mask · swept antlers'],['jingasa','Warrior jingasa','Conical lacquered hat · horsehair crest']],
+ china:[['ming','Ming guardian','Cheek plates · red horsehair tassel'],['tiger','Tiger general','Sculpted face mask · twin feather crest'],['jade','Jade sentinel','Ridged crown · flowing rear plume']],
+ norse:[['gjermundbu','Gjermundbu','Spectacle guard · braided horsehair'],['vendel','Vendel war helm','Full face plates · boar crest'],['raven','Raven keeper','Nasal guard · dark feather fan']],
+ greece:[['corinthian','Corinthian','Enclosed cheek guards · tall crest'],['attic','Attic commander','Open brow · transverse crest'],['phrygian','Phrygian','Forward crown · swept plume']],
+ egypt:[['nemes','Nemes war crown','Striped drape · cobra crest'],['horus','Horus guardian','Falcon face guard · feather crown'],['anubis','Anubis sentinel','Jackal face guard · tall ears']],
+ europe:[['greathelm','Great helm','Flat crown · cross visor · plume'],['sallet','Gothic sallet','Swept neck tail · narrow visor'],['armet','Royal armet','Rounded visor · fan of feathers']]
+};
+for(const [region,helmets] of Object.entries(helmetCatalog))GFHeritages[region].helmets=helmets;
+window.GFResolveHeritage=function(c){const h=GFHeritages[c.heritage]||GFHeritages.japan;return {h,armor:h.armor.find(x=>x[0]===c.heritageArmor)||h.armor[0],weapon:h.weapons.find(x=>x[0]===c.heritageWeapon)||h.weapons[0],helmet:h.helmets.find(x=>x[0]===c.heritageHeadgear)||h.helmets[0]}};
+window.GFNormalizeHeritage=function(c){if(!GFHeritages[c.heritage])c.heritage='japan';const {h,armor,weapon,helmet}=GFResolveHeritage(c);c.heritageHeadgear=helmet[0];for(const [key,fallback] of Object.entries({helmetColor:h.metal,helmetFaceColor:h.color,helmetCrestColor:h.cloth}))if(!/^#[0-9a-f]{6}$/i.test(c[key]||''))c[key]=fallback;c.heritageArmor=armor[0];c.heritageWeapon=weapon[0];c.weapon=weapon[3];c.armor=armor[1];return c};
+window.GFLoadoutKey=c=>JSON.stringify([c.heritage,c.heritageArmor,c.heritageWeapon,c.sex,c.body,c.skin,c.hairColor,c.armorColor,c.trimColor,c.clothColor,c.heritageHelmet,c.heritageHeadgear,c.helmetColor,c.helmetFaceColor,c.helmetCrestColor]);
 (function(){
- const c=GFNormalizeHeritage(window.gfGetConfig());
+ const c=GFNormalizeHeritage(window.gfGetConfig());c.selectedMode='Conquest Training';
  if(!c.heritageVersion){c.heritageVersion=1;c.armorColor=GFHeritages[c.heritage].metal;c.trimColor=GFHeritages[c.heritage].color;c.clothColor=GFHeritages[c.heritage].cloth;c.skin='#bd8565';c.hairColor='#30241f';c.heritageHelmet=true;}
  const $=id=>document.getElementById(id);let pending=false;
  const announce=t=>{$('heritage-live').textContent=t};
- const change=()=>{pending=true;$('forge-save-state').textContent='UNSAVED CHANGES';window.dispatchEvent(new Event('gf-appearance-change'));summary()};
+ const change=()=>{pending=true;localStorage.setItem('godforged13',JSON.stringify(c));$('forge-save-state').textContent='UNSAVED CHANGES';window.dispatchEvent(new Event('gf-appearance-change'));summary()};
  function summary(){const {h,armor,weapon}=GFResolveHeritage(c);$('forge-origin-name').textContent=h.name;$('forge-origin-title').textContent=h.title;$('forge-origin-copy').textContent=h.description;$('forge-loadout').textContent=armor[1]+' / '+weapon[1];$('forge-weapon-class').textContent=weapon[3]==='Spear'?'REACH · POLEARM':weapon[3]==='War Axe'?'IMPACT · HEAVY':'BALANCE · BLADE';$('forge-heritage-summary').textContent=h.name.toUpperCase();$('forge-armor-summary').textContent=armor[1];$('forge-weapon-summary').textContent=weapon[1];}
  function card(label,copy,index,selected,onClick){const b=document.createElement('button');b.type='button';b.className='forge-equipment'+(selected?' selected':'');b.setAttribute('aria-pressed',String(selected));const n=document.createElement('span');n.className='forge-item-number';n.textContent='0'+(index+1);const wrap=document.createElement('span'),title=document.createElement('strong'),small=document.createElement('small');title.textContent=label;small.textContent=copy;wrap.append(title,small);b.append(n,wrap);b.onclick=onClick;return b}
  function render(){
-  $('heritage-list').replaceChildren();for(const [id,h] of Object.entries(GFHeritages)){const b=document.createElement('button');b.type='button';b.className='forge-region'+(c.heritage===id?' selected':'');b.setAttribute('aria-pressed',String(c.heritage===id));b.innerHTML='<span class="forge-region-mark" aria-hidden="true"></span><span></span><small>03 / 03</small>';b.children[0].textContent=h.mark;b.children[1].textContent=h.name;b.onclick=()=>{c.heritage=id;c.heritageArmor=h.armor[0][0];c.heritageWeapon=h.weapons[0][0];c.armorColor=h.metal;c.trimColor=h.color;c.clothColor=h.cloth;GFNormalizeHeritage(c);render();change();announce(h.name+' selected. Three matching armor sets and three weapons available.')};$('heritage-list').append(b)}
-  const {h,armor,weapon}=GFResolveHeritage(c);
-  for(const [host,items,key,selected] of [[$('heritage-armor'),h.armor,'heritageArmor',armor],[$('heritage-weapons'),h.weapons,'heritageWeapon',weapon]]){host.replaceChildren();items.forEach((item,i)=>host.append(card(item[1],item[2],i,item===selected,()=>{c[key]=item[0];GFNormalizeHeritage(c);render();change();announce(item[1]+' equipped.')})))}
-  for(const key of ['armorColor','trimColor','clothColor','skin','hairColor'])$('forge-'+key).value=c[key];summary();
+  $('heritage-list').replaceChildren();for(const [id,h] of Object.entries(GFHeritages)){const b=document.createElement('button');b.type='button';b.className='forge-region'+(c.heritage===id?' selected':'');b.setAttribute('aria-pressed',String(c.heritage===id));b.innerHTML='<span class="forge-region-mark" aria-hidden="true"></span><span></span><small>03 / 03</small>';b.children[0].textContent=h.mark;b.children[1].textContent=h.name;b.onclick=()=>{c.heritage=id;c.heritageArmor=h.armor[0][0];c.heritageWeapon=h.weapons[0][0];c.heritageHeadgear=h.helmets[0][0];c.helmetColor=h.metal;c.helmetFaceColor=h.color;c.helmetCrestColor=h.cloth;c.armorColor=h.metal;c.trimColor=h.color;c.clothColor=h.cloth;GFNormalizeHeritage(c);render();change();announce(h.name+' selected. Three armor sets, helmets and weapons available.')};$('heritage-list').append(b)}
+  const {h,armor,weapon,helmet}=GFResolveHeritage(c);
+  for(const [host,items,key,selected] of [[$('heritage-armor'),h.armor,'heritageArmor',armor],[$('heritage-weapons'),h.weapons,'heritageWeapon',weapon],[$('heritage-helmets'),h.helmets,'heritageHeadgear',helmet]]){host.replaceChildren();items.forEach((item,i)=>host.append(card(item[1],item[2],i,item===selected,()=>{c[key]=item[0];GFNormalizeHeritage(c);render();change();announce(item[1]+' equipped.')})))}
+  for(const key of ['armorColor','trimColor','clothColor','skin','hairColor','helmetColor','helmetFaceColor','helmetCrestColor'])$('forge-'+key).value=c[key];summary();
  }
- for(const key of ['armorColor','trimColor','clothColor','skin','hairColor'])$('forge-'+key).addEventListener('input',e=>{c[key]=e.target.value;change()});
+ for(const key of ['armorColor','trimColor','clothColor','skin','hairColor','helmetColor','helmetFaceColor','helmetCrestColor'])$('forge-'+key).addEventListener('input',e=>{c[key]=e.target.value;change()});
  $('forge-name').value=c.godName==='Unnamed God'?'':c.godName||'';$('forge-name').addEventListener('input',e=>{c.godName=e.target.value.trim()||'Unnamed God';change()});
  $('forge-sex').value=c.sex;$('forge-body').value=['Athletic','Muscular','Heavyset'].includes(c.body)?c.body:'Athletic';
  for(const key of ['sex','body'])$('forge-'+key).addEventListener('change',e=>{c[key]=e.target.value;change()});
@@ -32,7 +42,9 @@ window.GFLoadoutKey=c=>JSON.stringify([c.heritage,c.heritageArmor,c.heritageWeap
  $('save').addEventListener('click',()=>{localStorage.setItem('godforged13',JSON.stringify(c));pending=false;$('forge-save-state').textContent='LOADOUT SAVED';window.dispatchEvent(new Event('gf-loadout-saved'))});
  $('forge-reset-view').onclick=()=>window.dispatchEvent(new Event('gf-reset-view'));
  $('forge-zoom').oninput=e=>window.dispatchEvent(new CustomEvent('gf-zoom',{detail:Number(e.target.value)}));
- $('forge-abilities').onclick=()=>window.gfNavigate('vault');
+ function jumpTo(id){const panel=$('creator'),target=$(id);if(target)panel.scrollTo({top:panel.scrollTop+target.getBoundingClientRect().top-panel.getBoundingClientRect().top-90,behavior:'instant'});}
+ $('forge-abilities').onclick=()=>jumpTo('gf43-abilities');
+ document.querySelectorAll('[data-forge-jump]').forEach(b=>b.onclick=()=>jumpTo(b.dataset.forgeJump));
  $('forge-return').onclick=()=>{if(pending){localStorage.setItem('godforged13',JSON.stringify(c));pending=false;window.dispatchEvent(new Event('gf-loadout-saved'))}window.gfNavigate('home')};
  render();localStorage.setItem('godforged13',JSON.stringify(c));
 })();

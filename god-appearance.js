@@ -45,11 +45,51 @@
  };
  function batchStatic(T,group){
   group.updateMatrixWorld(true);const inverse=group.matrixWorld.clone().invert(),batches=new Map(),old=[];
-  group.traverse(o=>{if(!o.isMesh)return;old.push(o);const m=o.material;if(Array.isArray(m))return;const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(new T.Matrix4().multiplyMatrices(inverse,o.matrixWorld));let b=batches.get(m);if(!b){b={p:[],n:[],uv:[]};batches.set(m,b)}b.p.push(g.attributes.position.array);b.n.push(g.attributes.normal.array);b.uv.push(g.attributes.uv?.array||new Float32Array(g.attributes.position.count*2));});
+  group.traverse(o=>{if(!o.isMesh)return;old.push(o);const m=o.material;if(Array.isArray(m))return;const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(new T.Matrix4().multiplyMatrices(inverse,o.matrixWorld));let b=batches.get(m);if(!b){b={p:[],n:[],uv:[]};batches.set(m,b)}b.p.push(g.attributes.position.array);b.n.push(g.attributes.normal.array);b.uv.push(g.attributes.uv?.array||new Float32Array(g.attributes.position.count*2));g.dispose();});
   const join=arrays=>{const dst=new Float32Array(arrays.reduce((n,a)=>n+a.length,0));let offset=0;for(const a of arrays){dst.set(a,offset);offset+=a.length}return dst};
   for(const o of old){o.parent.remove(o);o.geometry.dispose()}
   for(const [m,b] of batches){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(join(b.p),3));g.setAttribute('normal',new T.BufferAttribute(join(b.n),3));g.setAttribute('uv',new T.BufferAttribute(join(b.uv),2));const mesh=new T.Mesh(g,m);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh)}
  }
+ window.GFBuildHeritageHelmet=function(T,c){
+  const {h,helmet}=GFResolveHeritage(c),id=helmet[0],region=c.heritage,g=new T.Group();g.name='helmet-'+id;g.userData.helmetId=id;
+  const {mesh,ell,box,cyl,line,shell}=helpers(T,g),body=material(T,c.helmetColor||h.metal,'metal'),face=material(T,c.helmetFaceColor||h.color,'metal'),crest=material(T,c.helmetCrestColor||h.cloth,'cloth'),dark=material(T,'#10151a','cloth');
+  body.name='helmet-shell';face.name='helmet-face';crest.name='helmet-crest';
+  shell(0,2.99,-.015,.24,.23,.23,body);
+  const cheek=()=>{for(const s of [-1,1]){const o=box(s*.18,2.77,.13,.075,.28,.085,face);o.rotation.z=s*.12;}};
+  const visor=(full=false)=>{ell(0,2.81,.14,.229,full?.22:.15,.17,face);box(0,2.91,.305,.34,.026,.012,dark);for(let i=-3;i<=3;i++)box(i*.036,2.76,.297,.013,.04,.017,dark);};
+  const fan=(count=9,sideways=false)=>{for(let i=0;i<count;i++){const a=(i/(count-1)-.5)*1.7;const plume=ell(sideways?Math.sin(a)*.26:0,3.25+Math.cos(a)*.12,sideways?-.04:Math.sin(a)*.22,.028,.19,.028,crest);plume.rotation.z=sideways?-a*.55:0;plume.rotation.x=sideways?0:a*.6;}};
+  const tuft=()=>{for(let i=0;i<9;i++)line([[0,3.2,0],[Math.sin(i)*.04,3.45,-.08],[Math.sin(i)*.06,3.24,-.32]],.014,crest);};
+  if(region==='japan'){
+   if(id==='jingasa'){mesh(new T.ConeGeometry(.42,.22,32),body,0,3.16,-.02);cheek();tuft();}
+   else{for(let i=0;i<4;i++)mesh(new T.CylinderGeometry(.23+i*.02,.26+i*.02,.06,24,1,true,Math.PI*.3,Math.PI*1.4),body,0,2.88-i*.065,-.02);ell(0,3.02,.18,.27,.025,.14,body);visor(id==='oni');
+    if(id==='oni'){for(const s of [-1,1]){line([[s*.12,3.13,0],[s*.3,3.33,-.06],[s*.28,3.54,-.12]],.035,crest);mesh(new T.ConeGeometry(.028,.12,8),face,s*.09,2.72,.32).rotation.z=s*.5;}}
+    else for(const s of [-1,1])line([[s*.02,3.14,.17],[s*.2,3.27,.15],[s*.28,3.5,.08]],.026,crest);
+   }
+  }else if(region==='china'){
+   cheek();if(id==='ming'){cyl(0,3.23,0,.018,.07,.18,body);tuft();}
+   if(id==='tiger'){visor(true);for(const s of [-1,1]){ell(s*.17,3.12,.17,.08,.06,.04,face);line([[s*.05,3.18,0],[s*.2,3.6,-.1],[s*.32,3.42,-.35]],.03,crest);}}
+   if(id==='jade'){for(let i=-2;i<=2;i++)box(i*.07,3.16,-.04,.025,.19,.3,body);fan(11);box(0,2.92,.245,.04,.17,.035,face);}
+  }else if(region==='norse'){
+   for(let i=0;i<4;i++){const band=mesh(new T.TorusGeometry(.24,.013,5,24,Math.PI),face,0,2.99,-.01);band.rotation.y=i*Math.PI/2;}
+   if(id==='gjermundbu'){for(const s of [-1,1]){const eye=mesh(new T.TorusGeometry(.07,.018,5,18),face,s*.08,2.91,.21);eye.scale.y=.7;}box(0,2.84,.232,.032,.2,.035,face);tuft();}
+   if(id==='vendel'){visor(true);ell(0,3.25,0,.07,.09,.18,crest);mesh(new T.ConeGeometry(.05,.15,7),crest,0,3.29,.19).rotation.x=Math.PI/2;}
+   if(id==='raven'){cheek();box(0,2.9,.235,.035,.19,.03,face);fan(9,true);}
+  }else if(region==='greece'){
+   cheek();if(id==='corinthian'){box(0,2.86,.24,.035,.2,.045,face);for(const s of [-1,1])line([[s*.21,2.97,.13],[s*.08,2.99,.22]],.023,face);fan(17);}
+   if(id==='attic'){ell(0,3.02,.16,.24,.04,.1,face);fan(13,true);}
+   if(id==='phrygian'){line([[0,3.13,0],[0,3.36,.03],[0,3.4,.19],[0,3.29,.24]],.09,body);fan(7);}
+  }else if(region==='egypt'){
+   for(const s of [-1,1]){const flap=box(s*.23,2.78,-.03,.1,.45,.2,body);flap.rotation.z=s*.14;for(let j=0;j<7;j++)box(s*.23,2.98-j*.05,.08,.1,.014,.012,face);}
+   if(id==='nemes'){line([[0,3.1,.2],[0,3.3,.23],[0,3.34,.16]],.034,crest);box(0,2.75,.21,.065,.15,.04,face);}
+   if(id==='horus'){ell(0,2.88,.2,.17,.15,.12,face);const beak=mesh(new T.ConeGeometry(.08,.29,12),face,0,2.86,.37);beak.rotation.x=Math.PI/2;fan(11,true);}
+   if(id==='anubis'){ell(0,2.82,.22,.13,.13,.19,face);for(const side of [-1,1]){const ear=mesh(new T.ConeGeometry(.085,.45,9),crest,side*.14,3.36,0);ear.rotation.z=side*.15;}}
+  }else{
+   if(id==='greathelm'){cyl(0,2.94,0,.23,.25,.49,body);box(0,2.96,.25,.36,.026,.02,dark);box(0,2.88,.265,.04,.3,.025,face);box(0,2.99,.26,.4,.035,.025,face);tuft();}
+   if(id==='sallet'){ell(0,3,-.13,.25,.16,.34,body);visor();fan(7);}
+   if(id==='armet'){visor(true);for(const s of [-1,1])ell(s*.225,2.88,.03,.028,.055,.055,face);fan(9,true);}
+  }
+  return g;
+ };
  window.GFGodAppearance=function(root,T,_mesh,_material,options={}){
   const c=GFNormalizeHeritage(options.config||window.gfGetConfig()),{h,armor}=GFResolveHeritage(c),region=c.heritage,type=armor[3],id=armor[0];
   while(root.children.length){const old=root.children[0];root.remove(old);dispose(old)}
@@ -113,27 +153,7 @@
   if(region==='greece'||region==='norse'||(region==='europe'&&id==='hauberk')){
    const g=new T.PlaneGeometry(.65,1.55,10,14),p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);p.setZ(i,Math.sin(x*36)*.035+(0.8-y)*.045)}g.computeVertexNormals();const m=fabric.clone();m.side=T.DoubleSide;const cape=mesh(g,m,-.08,1.47,-.26);cape.rotation.x=.08;
   }
-  if(c.heritageHelmet!==false){
-   const helm=region==='egypt'?fabric:metal;shell(0,2.98,-.005,.23,.2,.217,helm);
-   if(region==='japan'){
-    for(let i=0;i<4;i++){const o=mesh(new T.CylinderGeometry(.22+i*.016,.245+i*.018,.06,24,1,true,Math.PI*.32,Math.PI*1.36),metal,0,2.86-i*.057,-.015);o.rotation.y=0;}
-    const brim=ell(0,2.99,.17,.24,.025,.13,metal);
-    for(const s of [-1,1])line([[s*.035,3.08,.18],[s*.13,3.19,.14],[s*.2,3.35,.09]],.022,trim);
-    {ell(0,2.73,.18,.14,.1,.06,metal);for(let i=-2;i<=2;i++)box(i*.035,2.74,.239,.016,.025,.006,dark)}
-   }else if(region==='greece'){
-    for(const s of [-1,1]){box(s*.15,2.79,.14,.075,.21,.06,metal);line([[s*.17,2.93,.17],[s*.08,2.95,.21]],.017,trim)}box(0,2.86,.217,.027,.17,.025,metal);
-    for(let i=0;i<18;i++)ell(0,3.16+Math.sin(i/17*Math.PI)*.09,-.19+i*.023,.035,.12,.021,fabric);
-   }else if(region==='europe'&&id==='gothic'){
-    ell(0,2.83,.08,.226,.18,.19,metal);box(0,2.91,.263,.3,.018,.009,dark);for(let i=-3;i<=3;i++)box(i*.028,2.79,.263,.009,.05,.009,dark);
-   }else if(region==='norse'){
-    line([[0,3.18,0],[0,3.12,.15],[0,2.96,.22],[0,2.8,.22]],.017,metal);for(const s of [-1,1]){const o=mesh(new T.TorusGeometry(.06,.014,5,16),metal,s*.075,2.9,.19);o.scale.y=.65;}
-   }else if(region==='china'){
-    cyl(0,3.19,0,.015,.06,.14,trim);for(let i=0;i<7;i++)line([[0,3.26,0],[Math.sin(i)*.045,3.34,-.05],[Math.sin(i)*.075,3.18,-.15]],.012,fabric);
-    for(const s of [-1,1])box(s*.2,2.82,0,.06,.19,.19,metal);
-   }else if(region==='egypt'){
-    for(const s of [-1,1]){const flap=box(s*.215,2.78,-.045,.085,.44,.18,fabric);flap.rotation.z=s*.13;for(let j=0;j<7;j++)box(s*.215,2.98-j*.05,.05,.085,.014,.01,trim)}
-   }
-  }
+  if(c.heritageHelmet!==false)figure.add(GFBuildHeritageHelmet(T,c));
   // Preview weapon and combat weapon are constructed by this same function.
   if(options.weapon!==false){const w=GFBuildHeritageWeapon(T,c);w.position.set(.6,1.36,.06);w.rotation.z=-.13;figure.add(w)}
   if(options.batch!==false)batchStatic(T,figure);root.userData.handX=.6*breadth;root.userData.heritageKey=GFLoadoutKey(c);root.userData.heritage=c.heritage;root.userData.armor=c.heritageArmor;root.userData.weapon=c.heritageWeapon;
