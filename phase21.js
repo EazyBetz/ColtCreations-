@@ -245,34 +245,54 @@ const GF21 = (() => {
  function cobbleTexture(){const c=document.createElement('canvas');c.width=512;c.height=512;const q=c.getContext('2d');q.fillStyle='#383b3b';q.fillRect(0,0,512,512);let seed=7143;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let y=-18;y<530;y+=28){let offset=(Math.floor(y/28)%2)*27;for(let x=-58+offset;x<550;x+=54){let r=75+rand()*35;q.fillStyle=`rgb(${r|0},${(r*.98)|0},${(r*.89)|0})`;q.beginPath();q.roundRect(x+2+rand()*3,y+2,46+rand()*5,22+rand()*3,4);q.fill();q.strokeStyle='#292d2b';q.lineWidth=2;q.stroke();q.fillStyle='rgba(180,177,149,.10)';q.fillRect(x+6,y+5,29,2)}}const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.colorSpace=T.SRGBColorSpace;return t}
  function ribbon(l,width,mat,y=.08){const verts=[],uv=[],idx=[],segments=210;for(let i=0;i<=segments;i++){let z=4+i*636/segments,x=laneX(l,z);for(let side of [-1,1]){verts.push(x+side*width/2,y,z);uv.push(side<0?0:1,z/9)}}for(let i=0;i<segments;i++){let a=i*2;idx.push(a,a+2,a+1,a+1,a+2,a+3)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(verts,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();const m=mesh(g,mat,0,0,0);m.receiveShadow=true;return m}
  function cobblestoneLanes(){let edge=material('#514f49');const cobble=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:1});for(let l=-1;l<=1;l++){ribbon(l,15,edge,.045);ribbon(l,12.8,cobble,.105);for(let z=25;z<625;z+=14){for(let side of [-1,1]){let x=laneX(l,z)+side*7.65;let curb=mesh(new T.BoxGeometry(.85,.36,3.5),material((Math.floor(z/14)%3)?'#6a685f':'#77736a'),x,.20,z);curb.rotation.y=Math.sin(z*.013+l*2.3)*.05}}}}
+ const flowingWater=[];
  function fountain(x,z,friendly){
-  // Flat, irregular enchanted water sanctuary with lethal enemy protection.
   const g=new T.Group();g.position.set(x,0,z);scene.add(g);
-  const stone=material(friendly?'#435963':'#593c4e'),trim=material('#aa9978');
-  const water=new T.MeshStandardMaterial({color:friendly?'#329eaf':'#b54170',emissive:friendly?'#14667a':'#6b153d',emissiveIntensity:.75,transparent:true,opacity:.86,metalness:.45,roughness:.18,side:T.DoubleSide});
-  const light=new T.MeshStandardMaterial({color:friendly?'#7deeff':'#ff8cac',emissive:friendly?'#26b7da':'#da3864',emissiveIntensity:1.65});
-  const outline=[],segments=32;
-  for(let i=0;i<segments;i++){const a=i*Math.PI*2/segments,r=14.5+Math.sin(a*3+.4)*2.1+Math.cos(a*5)*1.25;outline.push([Math.cos(a)*r,Math.sin(a)*r])}
-  const verts=[0,.11,0],idx=[];
-  for(const [px,pz] of outline)verts.push(px,.11,pz);
-  for(let i=0;i<segments;i++)idx.push(0,i+1,(i+1)%segments+1);
-  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
-  mesh(geo,water,0,0,0,g);
-  for(let i=0;i<segments;i++){const [ax,az]=outline[i],[bx,bz]=outline[(i+1)%segments];const dx=bx-ax,dz=bz-az;
-   const edge=mesh(new T.BoxGeometry(Math.hypot(dx,dz),.34,.55),stone,(ax+bx)/2,.12,(az+bz)/2,g);edge.rotation.y=-Math.atan2(dz,dx);
+  const stone=surface('masonry','#87918b',2),marble=surface('slate','#a9aaa0',2),bronze=material('#a58a51',.32);
+  const water=new T.MeshStandardMaterial({color:friendly?'#398d99':'#98566c',metalness:.55,roughness:.16,transparent:true,opacity:.82});
+  // The basin sits behind the spawn, keeping the healing plaza and lane exits open.
+  const bowl=new T.Group();bowl.position.z=friendly?-9:9;g.add(bowl);
+  mesh(new T.CylinderGeometry(7.6,8,.45,48),stone,0,.18,0,bowl);
+  for(const [r,y,tube] of [[7,.7,.55],[3.4,2.1,.32],[1.6,3.8,.22]]){
+   const rim=mesh(new T.TorusGeometry(r,tube,10,64),marble,0,y,0,bowl);rim.rotation.x=Math.PI/2;
+   mesh(new T.CylinderGeometry(r-.15,r-.15,.1,48),water,0,y-.12,0,bowl);
   }
-  for(let i=0;i<7;i++){const a=i*Math.PI*2/7,r=6.2+(i%2)*2.8;
-   const slab=mesh(new T.BoxGeometry(2.1,.18,1.2),trim,Math.sin(a)*r,.15,Math.cos(a)*r,g);slab.rotation.y=a;
-   const rune=mesh(new T.TorusGeometry(.72,.06,5,18),light,Math.sin(a)*r,.28,Math.cos(a)*r,g);rune.rotation.x=Math.PI/2;
+  mesh(new T.CylinderGeometry(.65,1.5,3.9,20),marble,0,2,0,bowl);
+  mesh(new T.SphereGeometry(.48,16,12),bronze,0,4.25,0,bowl);
+  const droplets=[];
+  for(let i=0;i<12;i++){
+   const angle=i*Math.PI/6,points=[];
+   for(let j=0;j<=20;j++){const t=j/20,r=1.45+4.8*t;points.push(new T.Vector3(Math.cos(angle)*r,3.7+2.5*t-5.6*t*t,Math.sin(angle)*r));}
+   const curve=new T.CatmullRomCurve3(points);
+   mesh(new T.TubeGeometry(curve,20,.045,5,false),water,0,0,0,bowl);
+   for(let j=0;j<3;j++){const drop=mesh(new T.SphereGeometry(.08,5,4),water,0,0,0,bowl);droplets.push({drop,curve,offset:(j/3+i/12)%1});}
   }
-  for(let i=0;i<4;i++){const a=i*Math.PI/2+.4;
-   mesh(new T.CylinderGeometry(.6,.9,4.2,7),stone,Math.sin(a)*12.5,2.1,Math.cos(a)*12.5,g);
-   mesh(new T.OctahedronGeometry(.6,0),light,Math.sin(a)*12.5,4.7,Math.cos(a)*12.5,g);
+  const rings=[];for(let i=0;i<4;i++){const r=mesh(new T.TorusGeometry(1,.024,4,48),water,0,.62,0,bowl);r.rotation.x=Math.PI/2;rings.push(r);}
+  for(let side of [-1,1]){
+   mesh(new T.CylinderGeometry(.8,1.1,.5,12),stone,side*10,.25,0,g);
+   mesh(new T.CylinderGeometry(.42,.65,4.2,12),marble,side*10,2.4,0,g);
+   mesh(new T.SphereGeometry(.3,12,8),bronze,side*10,4.65,0,g);
   }
-  const core=mesh(new T.OctahedronGeometry(1.15,0),light,0,1.55,0,g);
-  const ring=mesh(new T.TorusGeometry(18,.18,6,72),light,0,.21,0,g);ring.rotation.x=Math.PI/2;
-  g.userData.heart=core;g.userData.aura=ring;
-  return g;
+  const boundary=mesh(new T.TorusGeometry(18,.06,5,80),new T.MeshBasicMaterial({color:friendly?'#79cdd2':'#da778a',transparent:true,opacity:.4}),0,.34,0,g);boundary.rotation.x=Math.PI/2;
+  flowingWater.push({droplets,rings});return g;
+ }
+ function tickSanctuaries(dt,time){for(const f of flowingWater){for(const d of f.droplets)d.drop.position.copy(d.curve.getPoint((time*.0005+d.offset)%1));for(let i=0;i<f.rings.length;i++){const p=(time*.00025+i/4)%1;f.rings[i].scale.setScalar(1+p*5.5);}}}
+ function connectBases(){
+  const road=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:.95}),stone=surface('masonry','#686e62',2),wood=surface('timber','#746855',2);
+  for(const z of [24,620]){
+   // One walkable transverse street joins all three lane centerlines.
+   const path=mesh(new T.PlaneGeometry(218,12),road,0,.32,z);path.rotation.x=-Math.PI/2;
+   for(const x of [-48,48]){
+    const pool=mesh(new T.PlaneGeometry(27,35),new T.MeshStandardMaterial({color:'#101f1b',metalness:.65,roughness:.2}),x,.25,z);pool.rotation.x=-Math.PI/2;
+    for(let j=-12;j<=12;j++)mesh(new T.BoxGeometry(.94,.22,10.6),wood,x+j,.47,z);
+    for(const side of [-1,1]){
+     mesh(new T.BoxGeometry(26,.25,.35),wood,x,1.8,z+side*5.2);
+     for(let j=-12;j<=12;j+=4)mesh(new T.BoxGeometry(.4,1.9,.4),stone,x+j,.95,z+side*5.2);
+     for(let j=0;j<14;j++){const rx=x-12+(j*7%25),rz=z+side*(7+j%8);mesh(new T.ConeGeometry(.12,1.1,4),material('#535b34'),rx,.6,rz);}
+    }
+    for(const end of [-1,1]){const ramp=mesh(new T.BoxGeometry(4,.18,10.6),wood,x+end*14,.39,z);ramp.rotation.z=-end*.045;}
+   }
+  }
  }
  function buildBases(){for(let l=-1;l<=1;l++){let x=laneX(l,16);const platform=mesh(new T.CylinderGeometry(17,18,.35,18),material('#55565a'),x,.12,16);platform.receiveShadow=true;let enemyX=laneX(l,628);mesh(new T.CylinderGeometry(17,18,.35,18),material('#52474a'),enemyX,.12,628)}baseFountain=fountain(laneX(0,16),16,true);fountain(laneX(0,628),628,false)}
  const itemTrees=[
@@ -382,6 +402,7 @@ const GF21 = (() => {
  function updateGods(dt,now){
   for(const b of bots){
    if(!b.alive){if(now<b.respawnAt)continue;b.alive=true;b.hp=b.max;b.root.visible=true;b.z=b.friendly?16:628;b.x=laneX(0,b.z);b.spawnSpinUntil=now+1100}
+   if(now<(b.stunnedUntil||0))continue;
    const candidates=mobs.filter(m=>m.alive&&m.friendly!==b.friendly&&m.kind!=='guard'&&(m.kind!=='tower'||Math.abs(m.x-laneX(b.lane,m.z))<15)).map(m=>({x:m.x,z:m.z,obj:m,type:'mob'}));
    for(const titan of baseStructures)if(titan.alive&&titan.friendly!==b.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&m.friendly===titan.friendly&&m.lane===b.lane))candidates.push({x:titan.x,z:titan.z,obj:titan,type:'titan'});
    for(const o of bots)if(o!==b&&o.alive&&o.friendly!==b.friendly)candidates.push({x:o.x,z:o.z,obj:o,type:'bot'});
@@ -471,9 +492,10 @@ const GF21 = (() => {
   const state=gold+'|'+available+'|'+Object.values(ownedItems).join(',');
   if(shopPanel.dataset.state!==state)updateShop();
  }
- if(!window.gf43HudRegion||window.gf43HudRegion!==(window.gfGetConfig?.().heritage||'japan')){
+ const hudCfg=window.gfGetConfig?.()||{},hudKey=[hudCfg.heritage,hudCfg.ability1,hudCfg.ability2,hudCfg.ability3].join('|');
+ if(window.gf43HudRegion!==hudKey){
   const c=window.gfGetConfig?.()||{},groups=window.GFRegionalAbilities?.[c.heritage||'japan'];
-  if(groups){window.gf43HudRegion=c.heritage||'japan';for(let i=0;i<3;i++){const selected=groups[i].find(a=>a[0]===c['ability'+(i+1)])||groups[i][0];const button=$('s'+(i+1));if(button){button.title=selected[0]+' — '+selected[1];button.setAttribute('aria-label',button.title);button.dataset.abilityName=selected[0]}}}
+  if(groups){window.gf43HudRegion=hudKey;for(let i=0;i<3;i++){const selected=groups[i].find(a=>a[0]===c['ability'+(i+1)])||groups[i][0];const button=$('s'+(i+1));if(button){button.dataset.label=selected[0];button.title=selected[0]+' — '+selected[1];button.setAttribute('aria-label',button.title);button.dataset.abilityName=selected[0]}}}
  }
  if(baseHud){let bossHud=$('gf45BossHP');if(!bossHud){bossHud=document.createElement('span');bossHud.id='gf45BossHP';bossHud.style.cssText='background:#42191cde;border:1px solid #e98e54;border-radius:8px;padding:7px 10px;color:#ffe2bd';baseHud.append(bossHud)}
  const enemyBoss=baseStructures.find(t=>!t.friendly);bossHud.textContent=enemyBoss?.alive?'TITAN '+Math.max(0,Math.ceil(enemyBoss.hp))+'/'+enemyBoss.max:'TITAN DEFEATED';
@@ -554,6 +576,7 @@ const GF21 = (() => {
   phase25Landscape();
   cobblestoneLanes();
   buildBases();
+  connectBases();
   makeDemonDogs();
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
@@ -763,21 +786,16 @@ const GF21 = (() => {
  function spellPart(geometry,mat,x,y,z,group){return mesh(geometry,mat,x,y,z,group)}
  let abilityReady=[0,0,0],summons=[];
  function cast(which){
-  if(!active||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
+  if(!active||matchEnded||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
   const cfg=window.gfGetConfig?.()||{},regional=window.GFRegionalAbilities?.[cfg.heritage||'japan'],selected=regional?.[which]?.some(x=>x[0]===cfg['ability'+(which+1)])?cfg['ability'+(which+1)]:regional?.[which]?.[0]?.[0],name=selected||cfg['ability'+(which+1)]||'Cinder Fan';
  const pool={Cone:['Cinder Fan','Glacier Breath','Dread Howl'],Line:['Storm Lance','Rift Spear','Solar Rail'],Placement:['Grave Circle','Forge Turret','Verdant Snare']};
  const meta=window.GFRegionalAbilityMeta?.[name],type=meta?.category||Object.keys(pool).find(k=>pool[k].includes(name))||'Cone';abilityReady[which]=now+(meta?.cooldown||(type==='Placement'?11500:7000));recallUntil=0;
   const dirX=Math.sin(yaw),dirZ=Math.cos(yaw),originX=position.x,originZ=position.z;
+  let hitCount=0;
   const distance=type==='Line'?19:type==='Cone'?11:13;
   const tx=originX+dirX*distance,tz=originZ+dirZ*distance;
-  if(combatForge&&!meta)combatForge.ability(name,originX,originZ,yaw,tx,tz);
-  else {
-   const fx=new T.Group();scene.add(fx);fx.position.set(originX,0,originZ);
-   const mat=new T.MeshBasicMaterial({color:window.GFHeritages?.[cfg.heritage]?.color||'#b5a2ff',transparent:true,opacity:.72,depthWrite:false,side:T.DoubleSide});
-   const indicator=mesh(new T.RingGeometry(type==='Placement'?2:1,type==='Placement'?6:3.4,32),mat,dirX*(type==='Placement'?13:7),.12,dirZ*(type==='Placement'?13:7),fx);
-   indicator.rotation.x=-Math.PI/2;
-   effects.push({mesh:fx,ttl:.7,max:.7,spell:which});
-  }
+  combatForge?.ability(name,originX,originZ,yaw,tx,tz);
+  attackTime=.55;weaponAttackAge=.01;
   // A Forge Turret remains a persistent damaging summon, not just an effect.
   if(name==='Forge Turret'){
    const turret=mesh(new T.CylinderGeometry(.6,1.1,3,8),material('#997345'),tx,1.5,tz);
@@ -785,18 +803,23 @@ const GF21 = (() => {
   }
  for(const m of mobs){if(!m.alive||m.friendly)continue;const dx=m.x-originX,dz=m.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX),range=Math.hypot(dx, dz);let hit=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(m.x-tx,m.z-tz)<6;if(!hit)continue;
    let dmg=meta?.damage||(type==='Line'?65:type==='Cone'?43:35); if(name==='Solar Rail')dmg=90;if(meta?.stun)m.stunnedUntil=now+(type==='Placement'?1700:1050);if(name==='Dread Howl')m.stunnedUntil=now+1100;if(name==='Glacier Breath'||name==='Verdant Snare')m.stunnedUntil=now+1700;
-   m.hp-=dmg+powerBonus;if(m.hp<=0)finishMob(m,true)
+   m.hp-=dmg+powerBonus;hitCount++;if(m.hp<=0)finishMob(m,true)
   }
   for(const enemy of [...bots.filter(b=>b.alive&&!b.friendly),...baseStructures.filter(t=>t.alive&&!t.friendly&&!mobs.some(m=>m.alive&&m.kind==='tower'&&!m.friendly))]){
    const dx=enemy.x-originX,dz=enemy.z-originZ,forward=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX);
    const struck=type==='Cone'?forward>0&&forward<12&&side<forward*.65+1:type==='Line'?forward>0&&forward<20&&side<1.8:Math.hypot(enemy.x-tx,enemy.z-tz)<6;
    if(!struck)continue;
-   enemy.hp-=(meta?.damage||(type==='Line'?65:type==='Cone'?43:35))+powerBonus;
+   hitCount++;enemy.hp-=(meta?.damage||(type==='Line'?65:type==='Cone'?43:35))+powerBonus;
+   if(meta?.stun)enemy.stunnedUntil=now+1050;
    if(enemy.kind==='titan')endIfTitanDestroyed(enemy);
    else if(enemy.hp<=0){enemy.alive=false;enemy.root.visible=false;enemy.respawnAt=now+11000;gold+=85;kills++}
   }
-  damageDemonDog(tx,tz,42+powerBonus,7);
-  $('status').textContent=name.toUpperCase()+' · '+type+' power';
+  for(const dog of demonDogs.filter(d=>d.alive)){
+   const dx=dog.x-originX,dz=dog.z-originZ,f=dx*dirX+dz*dirZ,side=Math.abs(dx*dirZ-dz*dirX);
+   if(type==='Cone'?f>0&&f<12&&side<f*.65+1:type==='Line'?f>0&&f<20&&side<1.8:Math.hypot(dog.x-tx,dog.z-tz)<6)
+    damageDemonDog(dog.x,dog.z,(meta?.damage||43)+powerBonus,.1);
+  }
+  $('status').textContent=name.toUpperCase()+' · '+(meta?.damage||43)+' DAMAGE · '+hitCount+' HITS';
  }
  function frame(time){requestAnimationFrame(frame);for(const t of summons){if(time>t.until){scene.remove(t.mesh);continue}if(time<t.next)continue;t.next=time+800;let target=mobs.find(m=>m.alive&&!m.friendly&&Math.hypot(m.x-t.x,m.z-t.z)<14);if(target){target.hp-=18+powerBonus*.3;if(target.hp<=0){target.alive=false;target.root.visible=false;gainGold(45)}}}summons=summons.filter(t=>time<t.until);if(!active||!renderer)return;let dt=Math.min(.04,(time-(prev||time))/1000);prev=time;const v=window.gfGetConfig?.();let j=window.joystick||null; // legacy joystick is lexical; bridge below supplies it.
  const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=-input.x; // Phase 22: horizontal stick reversed; vertical unchanged
@@ -806,6 +829,8 @@ const GF21 = (() => {
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);camera.position.set(position.x-dirX*back,4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,2.2+pitch*3,position.z+dirZ*4);
  updateBattleSystems(dt,time);
  combatForge?.tick(dt);
+ tickSanctuaries(dt,time);
+ for(let i=0;i<3;i++){const b=$('s'+(i+1)),left=Math.max(0,(abilityReady[i]-time)/1000);b.textContent=left>0?Math.ceil(left):['Ⅰ','Ⅱ','Ⅲ'][i];b.style.opacity=left>0?'.55':'1';b.dataset.cooling=left>0?'true':'false';}
  if(baseFountain?.userData.heart){baseFountain.userData.heart.rotation.y+=dt*.6;baseFountain.userData.heart.position.y=1.55+Math.sin(time*.0017)*.35;}
  for(let b of buffs){if(b.alive){b.orb.visible=true;b.orb.rotation.y+=dt;b.orb.position.y=2.3+Math.sin(time*.003+b.x)*.25;if(Math.hypot(position.x-b.x,position.z-b.z)<3){b.alive=false;b.respawn=time+45000;b.orb.visible=false;if(b.kind==='SPEED')speedBuffUntil=time+20000;$('status').textContent=b.kind+' JUNGLE BUFF ACQUIRED · +25% movement for 20s'}}else if(time>b.respawn)b.alive=true}
  for(let e of effects){e.ttl-=dt;let progress=1-e.ttl/e.max;e.mesh.scale.setScalar(.72+progress*.38);if(e.spell===0)e.mesh.rotation.y+=dt*1.8;if(e.spell===2)e.mesh.rotation.y+=dt*.4;e.mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.transparent){o.material.opacity=Math.max(0,1-progress)*(.7)}});if(e.ttl<=0){scene.remove(e.mesh);e.mesh.traverse(o=>{if(o.isMesh){o.geometry.dispose();if(o.material.dispose)o.material.dispose()}})}}effects=effects.filter(e=>e.ttl>0);

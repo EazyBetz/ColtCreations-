@@ -126,6 +126,8 @@
       o.rotation.x=Math.PI/2;return o;
     }
     function ability(name,worldX,worldZ,yaw,targetX,targetZ) {
+      const meta=window.GFRegionalAbilityMeta?.[name];
+      if(meta){regionalAbility(name,meta,worldX,worldZ,yaw,targetX,targetZ);return;}
       const g=new T.Group();g.position.set(worldX,0,worldZ);g.rotation.y=yaw;scene.add(g);
       const colors={'Cinder Fan':'#ff6b28','Glacier Breath':'#97e7ff','Dread Howl':'#bd6bff',
         'Storm Lance':'#80cfff','Rift Spear':'#ae79fa','Solar Rail':'#ffe4a2',
@@ -205,6 +207,30 @@
       }
       register(g,name==='Forge Turret'?.95:.78,{expand:name==='Dread Howl'?.35:.13});
     }
+    function regionalAbility(name,meta,x,z,yaw,tx,tz){
+      const g=new T.Group();scene.add(g);g.position.set(x,0,z);g.rotation.y=yaw;
+      const palettes={japan:'#f2a1ac',china:'#f5b24d',norse:'#a5deef',greece:'#f9d48c',egypt:'#e6c06a',europe:'#9ebdde'};
+      const fire=/fire|flame|inferno|dragon|phoenix|solar|sunbeam/i.test(name),ice=/frost/i.test(name),lightning=/bolt|thunder|zeus|raijin|storm/i.test(name);
+      const c=fire?'#ff8b32':ice?'#b4edff':lightning?'#98dfff':palettes[meta.region];
+      const flecks=[];
+      if(meta.category==='Line'){
+        // A readable, full-length strike: bright core, forked electricity or a steel spear.
+        if(lightning){for(let b=0;b<3;b++){let prev=new T.Vector3(0,2,.5);for(let i=1;i<=20;i++){const next=new T.Vector3(Math.sin(i*5+b)*(.12+b*.18),2+Math.cos(i*3+b)*.22,i);segment(g,prev,next,b===0?.085:.035,b===0?'#f5fcff':c,.9);prev=next;}}}
+        else{const core=addMesh(g,new T.CylinderGeometry(.09,.18,19,10),'#fff6dc',.95,0,2,10);core.rotation.x=Math.PI/2;const tip=addMesh(g,new T.ConeGeometry(.45,1.7,8),c,.95,0,2,19);tip.rotation.x=Math.PI/2;}
+        for(let i=0;i<20;i++){const m=shard(g,Math.sin(i*7)*.65,2+Math.cos(i*4)*.4,i,c,.1);flecks.push(m);}
+      }else if(meta.category==='Cone'){
+        // Layered forward sweeps and airborne embers/crystals occupy the actual damage cone.
+        for(let i=0;i<3;i++){const arc=addMesh(g,new T.TorusGeometry(4+i*3,.08+i*.025,6,36,1.2),c,.7,0,.6+i*.5,0);arc.rotation.set(Math.PI/2,0,Math.PI/2-.6);}
+        for(let i=0;i<48;i++){const d=1+(i%12)*.85,side=Math.sin(i*9)*d*.58;const m=ice?shard(g,side,.4+(i%4)*.45,d,c,.17):addMesh(g,new T.SphereGeometry(.09+(i%3)*.06,6,5),i%3?c:'#fff3ce',.85,side,.3+(i%5)*.38,d);if(fire)m.scale.y=3;flecks.push(m);}
+      }else{
+        g.position.set(tx,0,tz);g.rotation.y=0;
+        ring(g,5.85,c,.18,0,.7);ring(g,5.3,c,.2,0,.35);
+        for(let i=0;i<12;i++){const a=i*TAU/12;const m=shard(g,Math.cos(a)*5,.7,Math.sin(a)*5,c,.3);flecks.push(m);}
+        const core=addMesh(g,new T.OctahedronGeometry(.65,1),c,.9,0,2.4,0);flecks.push(core);
+        for(let i=0;i<24;i++){const a=i*2.4,r=1+i%5;flecks.push(addMesh(g,new T.SphereGeometry(.07,5,4),c,.8,Math.sin(a)*r,.3+(i%6)*.35,Math.cos(a)*r));}
+      }
+      const e=register(g,meta.category==='Placement'?1.6:.65,{expand:0});e.opts.flecks=flecks;
+    }
     function utility(name,x,z,yaw) {
       const g=new T.Group();g.position.set(x,0,z);g.rotation.y=yaw;scene.add(g);
       let c='#a8c8ff';
@@ -222,6 +248,7 @@
         const p=Math.min(1,Math.max(0,1-e.life/e.duration));
         const opacity=p<.58?1:Math.max(0,(1-p)/.42);
         for(const m of e.materials)m.m.opacity=m.opacity*opacity;
+        if(e.opts.flecks)for(const n of e.opts.flecks){n.position.y+=dt*.7;n.rotation.y+=dt*2;}
         if(e.opts.reveal){
           e.group.traverse(function (n) {
             if(n.userData.combatReveal)n.geometry.setDrawRange(0,Math.min(n.userData.combatTriangles,
