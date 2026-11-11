@@ -1,17 +1,31 @@
 /* Shared terrain heights keep bridges, actors and camera on the same surface. */
 window.GFWorldRules={
- bridges:[{x:-48,z:24,axis:'x'},{x:48,z:24,axis:'x'},{x:-48,z:620,axis:'x'},{x:48,z:620,axis:'x'},{x:Math.sin(330*.013)*4+Math.sin(330*.031)*1.7,z:330,axis:'z'}],
+ bridges:[{x:-48,z:24,axis:'x'},{x:48,z:24,axis:'x'},{x:-48,z:620,axis:'x'},{x:48,z:620,axis:'x'},{x:-98,z:330,axis:'z'},{x:92,z:330,axis:'z'},{x:Math.sin(330*.013)*4+Math.sin(330*.031)*1.7,z:330,axis:'z'}],
  bridgeHeight(t){return .32+1.45*Math.sin(Math.PI*Math.max(0,Math.min(1,t)))**2},
  surfaceHeight(x,z){for(const b of this.bridges){const along=b.axis==='x'?x-b.x:z-b.z,across=b.axis==='x'?z-b.z:x-b.x;if(Math.abs(along)<=16&&Math.abs(across)<=6)return this.bridgeHeight((along+16)/32)}return z<95||z>549?.32:.11},
  leapPoint(from,to,t){t=Math.max(0,Math.min(1,t));return {x:from.x+(to.x-from.x)*t,z:from.z+(to.z-from.z)*t,y:4*4.4*t*(1-t)}},
  dogs:{campZ:[215,405,555],perCamp:4,health:420,alphaHealth:720,damage:28,alphaDamage:45,respawn:45000}
 };
 window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
- const water=new T.MeshStandardMaterial({color:'#102721',metalness:.55,roughness:.18}),wood=surface('timber','#766957',2),brick=surface('masonry','#65554a',3),slate=surface('slate','#353943',2);
+ const wood=surface('timber','#766957',2),brick=surface('masonry','#65554a',3),slate=surface('slate','#353943',2);
  const active=[];
+ const water=new T.MeshPhysicalMaterial({color:'#2381aa',metalness:.22,roughness:.19,clearcoat:1,clearcoatRoughness:.12,transparent:true,opacity:.87,side:T.DoubleSide});
+ const rippleData=new Uint8Array(64*64*4);for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4,v=128+45*Math.sin(x*.6+y*.3)+25*Math.sin(y*.9-x*.2);rippleData[i]=rippleData[i+1]=rippleData[i+2]=v;rippleData[i+3]=255;}
+ const ripples=new T.DataTexture(rippleData,64,64);ripples.wrapS=ripples.wrapT=T.RepeatWrapping;ripples.repeat.set(3,55);ripples.needsUpdate=true;water.bumpMap=ripples;water.bumpScale=.14;
+ function stream(points,width){
+  const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(p[0],.07,p[1]))),verts=[],uv=[],indices=[];
+  for(let i=0;i<=320;i++){const t=i/320,p=curve.getPoint(t),tangent=curve.getTangent(t),nx=-tangent.z,nz=tangent.x,w=width*(1+.12*Math.sin(t*51));for(const side of [-1,1]){verts.push(p.x+nx*w*side,.07,p.z+nz*w*side);uv.push((side+1)/2,t);}}
+  for(let i=0;i<320;i++){const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();const river=mesh(geo,water,0,0,0);river.userData.dynamic=true;river.name='continuous-stream';river.castShadow=false;
+  // Organic gravel banks, with gaps at crossings and clear paths.
+  for(let i=0;i<=90;i++){const t=i/90,p=curve.getPoint(t),v=curve.getTangent(t);if([24,125,310,330,510,620].some(z=>Math.abs(z-p.z)<18))continue;for(const side of [-1,1]){const rock=mesh(new T.DodecahedronGeometry(.45+(i%3)*.15,0),brick,p.x-v.z*width*side,.13,p.z+v.x*width*side);rock.scale.set(1.6,.6,1);}}
+ }
+ for(const side of [-1,1])stream([[-48*side,-90],[-48*side,24],[-52*side,110],[-40*side,215],[-48*side,330],[-55*side,445],[-43*side,540],[-48*side,620],[-48*side,730]],6);
+ stream([[-210,330],[-98,330],[-48,330],[-5,330],[48,330],[92,330],[210,330]],6);
+
  for(const b of GFWorldRules.bridges){
   const g=new T.Group();g.position.set(b.x,0,b.z);g.rotation.y=b.axis==='x'?0:Math.PI/2;scene.add(g);
-  const pool=mesh(new T.PlaneGeometry(32,38),water,0,.23,0,g);pool.rotation.x=-Math.PI/2;
+
   // Each plank and railing follows the same arch used by movement.
   for(let j=0;j<32;j++){const u=j/32,v=(j+1)/32,h1=GFWorldRules.bridgeHeight(u),h2=GFWorldRules.bridgeHeight(v),x=-15.5+j;
    const plank=mesh(new T.BoxGeometry(1.02,.24,11.6),wood,x,(h1+h2)/2-.12,0,g);plank.rotation.z=Math.atan2(h2-h1,1);
@@ -53,7 +67,7 @@ window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
   witch.userData.dynamic=true;spoon.userData.dynamic=true;for(const puff of vapors)puff.userData.dynamic=true;
   active.push({witch,spoon,vapors,brew});
  }
- return {tick(time){for(const a of active){a.witch.rotation.z=Math.sin(time*.0012)*.035;a.spoon.rotation.x=Math.sin(time*.0018)*.22;for(let i=0;i<a.vapors.length;i++){const p=(time*.00018+i/7)%1;a.vapors[i].position.set(2.8+Math.sin(p*7)*.3,2+p*3.2,7+Math.cos(p*5)*.2);a.vapors[i].scale.setScalar(.35+p*1.7);}}}};
+ return {tick(time){ripples.offset.y=-time*.000018;ripples.offset.x=Math.sin(time*.0001)*.12;for(const a of active){a.witch.rotation.z=Math.sin(time*.0012)*.035;a.spoon.rotation.x=Math.sin(time*.0018)*.22;for(let i=0;i<a.vapors.length;i++){const p=(time*.00018+i/7)%1;a.vapors[i].position.set(2.8+Math.sin(p*7)*.3,2+p*3.2,7+Math.cos(p*5)*.2);a.vapors[i].scale.setScalar(.35+p*1.7);}}}};
 };
 // Batch repeated static props per area; animated actors and water remain independent.
 window.GFOptimizeScenery=function(T,scene){

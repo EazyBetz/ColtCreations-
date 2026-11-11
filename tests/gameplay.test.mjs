@@ -17,7 +17,7 @@ for(const [region,h] of Object.entries(ctx.GFHeritages))for(const helmet of h.he
  for(const color of ['123456','654321','dabcfe'])assert(colors.has(color),helmet[0]+' missing recolorable part');signatures.add(hash.digest('hex'));ctx.GFDisposeFigure(g);variants++;
 }
 assert.equal(variants,18);assert.equal(signatures.size,18);
-const rules=ctx.GFWorldRules;assert.equal(rules.bridges.length,5);for(const b of rules.bridges){assert.equal(rules.bridgeHeight(0),rules.bridgeHeight(1));assert(rules.surfaceHeight(b.x,b.z)>1.7);}
+const rules=ctx.GFWorldRules;assert.equal(rules.bridges.length,7);for(const b of rules.bridges){assert.equal(rules.bridgeHeight(0),rules.bridgeHeight(1));assert(rules.surfaceHeight(b.x,b.z)>1.7);}
 const from={x:0,z:10},to={x:0,z:26};assert.equal(rules.leapPoint(from,to,0).y,0);assert.equal(rules.leapPoint(from,to,1).y,0);assert.equal(rules.leapPoint(from,to,.5).y,4.4);
 let source=read('phase21.js').replace("await import('https://esm.sh/three@0.170.0')",'TEST_THREE');
 source=source.replace(' return {getGod,fitGLB,applyStyle};',`return {laneApproach,inSanctuary,init,resetMatch,hit,cast,utility,frame,receiveDamage,updateBattleSystems,tickLeap,collision,updateDemonDogs,endIfTitanDestroyed,spawnWave,get state(){return {hp,maxHp,respawnAt,position,yaw,camera,jumpHeight,leap,mobs,bots,demonDogs,baseStructures,scene,matchEnded,active,matchElapsed}},setPosition(x,z){position={x,z}},setActive(){active=true},clearCooldown(){abilityReady=[0,0,0];utilityCooldown=0;attackReadyAt=0},setRecall(){recallUntil=now+4500},get recall(){return recallUntil}};`);
@@ -34,7 +34,7 @@ for(const boss of state.baseStructures){
  const spawnZ=boss.friendly?-48:692;assert.equal(Math.abs(spawnZ-boss.z),46);
  assert(!ctx.qa.collision(boss.x,boss.z));assert(!ctx.qa.collision(0,spawnZ));
 }
-ctx.qa.spawnWave();const spawned=ctx.qa.state.mobs.filter(m=>m.kind!=='tower');assert.equal(spawned.length,36);assert.equal(new Set(spawned.map(m=>`${m.x},${m.z}`)).size,36);ctx.qa.resetMatch();
+ctx.qa.spawnWave();const spawned=ctx.qa.state.mobs.filter(m=>m.kind!=='tower');assert.equal(spawned.length,36);assert(spawned.every(m=>m.root.scale.x<=.4),'minions must be much smaller than gods');assert.equal(new Set(spawned.map(m=>`${m.x},${m.z}`)).size,36);ctx.qa.resetMatch();
 ctx.qa.setActive();ctx.qa.setPosition(0,24);ctx.qa.utility();assert(ctx.qa.state.leap);ctx.qa.tickLeap(.475);assert(ctx.qa.state.jumpHeight>4);ctx.qa.tickLeap(.475);assert.equal(ctx.qa.state.jumpHeight,0);assert.equal(ctx.qa.state.position.z,40);
 ctx.qa.receiveDamage(1000,now);assert.equal(ctx.qa.state.hp,0);assert.equal(ctx.qa.state.respawnAt,8000);now=2000;ctx.qa.updateBattleSystems(.016,now);assert.equal(ctx.qa.state.hp,0,'death must not instantly respawn');now=8100;ctx.qa.updateBattleSystems(.016,now);assert(ctx.qa.state.hp>0);assert.equal(ctx.qa.state.position.z,-48);
 // Basic attack spam must not multiply damage within the swing interval.

@@ -2,7 +2,7 @@ import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:asser
 const T=await import(pathToFileURL(process.argv[2]).href),root=new URL('../',import.meta.url);
 const source=fs.readFileSync(new URL('phase21.js',root),'utf8');
 const catalog=fs.readFileSync(new URL('regional-abilities.js',root),'utf8').split('(function(){')[0];
-const ctx={window:{},performance:{now:()=>1000},console};vm.createContext(ctx);vm.runInContext(catalog,ctx);
+const ctx={coop:null,window:{},performance:{now:()=>1000},console};vm.createContext(ctx);vm.runInContext(catalog,ctx);
 const W=ctx.window;assert.equal(Object.keys(W.GFRegionalAbilityMeta).length,54);
 vm.runInContext(fs.readFileSync(new URL('combat-overhaul.js',root),'utf8'),ctx);
 let total=0;
