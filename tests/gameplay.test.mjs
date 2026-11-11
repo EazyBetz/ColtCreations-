@@ -3,7 +3,7 @@ import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:asser
 const Three=await import(pathToFileURL(process.argv[2]).href),root=new URL('../',import.meta.url),read=n=>fs.readFileSync(new URL(n,root),'utf8');
 let now=1000;const elements=new Map(),noop=()=>{};
 const drawing=new Proxy({createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop,set:(o,k,v)=>(o[k]=v,true)});
-class Element{constructor(){this.style={};this.dataset={};this.children=[];this.hidden=true;this.classList={add:noop,remove:noop,contains:()=>false};this.width=105;this.height=105;this.clientWidth=900;this.clientHeight=600;}append(...e){this.children.push(...e)}appendChild(e){this.append(e)}insertBefore(e){this.append(e)}addEventListener(){}setAttribute(){}querySelector(s){return get(s)}querySelectorAll(){return []}getContext(){return drawing}remove(){} }
+class Element{constructor(){this.style={};this.dataset={};this.children=[];this.hidden=true;this.classList={add:noop,remove:noop,contains:()=>false};this.width=105;this.height=105;this.clientWidth=900;this.clientHeight=600;}append(...e){this.children.push(...e)}appendChild(e){this.append(e)}insertBefore(e){this.append(e)}addEventListener(k,f){(this.listeners??={})[k]=f}setPointerCapture(){}setAttribute(){}querySelector(s){return get(s)}querySelectorAll(){return []}getContext(){return drawing}remove(){} }
 function get(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id)}
 class Renderer{setPixelRatio(r){this.r=r}getPixelRatio(){return this.r}setSize(){}render(){} }
 const T={...Three,WebGLRenderer:Renderer,TextureLoader:class{load(){return new Three.Texture()}}};
@@ -20,7 +20,7 @@ assert.equal(variants,18);assert.equal(signatures.size,18);
 const rules=ctx.GFWorldRules;assert.equal(rules.bridges.length,5);for(const b of rules.bridges){assert.equal(rules.bridgeHeight(0),rules.bridgeHeight(1));assert(rules.surfaceHeight(b.x,b.z)>1.7);}
 const from={x:0,z:10},to={x:0,z:26};assert.equal(rules.leapPoint(from,to,0).y,0);assert.equal(rules.leapPoint(from,to,1).y,0);assert.equal(rules.leapPoint(from,to,.5).y,4.4);
 let source=read('phase21.js').replace("await import('https://esm.sh/three@0.170.0')",'TEST_THREE');
-source=source.replace(' return {getGod,fitGLB,applyStyle};',`return {init,resetMatch,hit,cast,utility,frame,receiveDamage,updateBattleSystems,tickLeap,collision,updateDemonDogs,endIfTitanDestroyed,spawnWave,get state(){return {hp,maxHp,respawnAt,position,jumpHeight,leap,mobs,bots,demonDogs,baseStructures,scene,matchEnded,active,matchElapsed}},setPosition(x,z){position={x,z}},setActive(){active=true},clearCooldown(){abilityReady=[0,0,0];utilityCooldown=0;attackReadyAt=0},setRecall(){recallUntil=now+4500},get recall(){return recallUntil}};`);
+source=source.replace(' return {getGod,fitGLB,applyStyle};',`return {init,resetMatch,hit,cast,utility,frame,receiveDamage,updateBattleSystems,tickLeap,collision,updateDemonDogs,endIfTitanDestroyed,spawnWave,get state(){return {hp,maxHp,respawnAt,position,yaw,camera,jumpHeight,leap,mobs,bots,demonDogs,baseStructures,scene,matchEnded,active,matchElapsed}},setPosition(x,z){position={x,z}},setActive(){active=true},clearCooldown(){abilityReady=[0,0,0];utilityCooldown=0;attackReadyAt=0},setRecall(){recallUntil=now+4500},get recall(){return recallUntil}};`);
 // No exported test hooks in shipped source: this instrumentation exists only in this VM.
 vm.runInContext(source+'\nthis.qa=GF21;',ctx);await ctx.qa.init();let state=ctx.qa.state;
 assert(state.scene&&state.mobs.length===18,'full scene must initialize');assert.equal(state.demonDogs.length,24);assert(state.demonDogs.every(d=>d.hp>=420&&d.damage>=28));
@@ -32,7 +32,19 @@ ctx.qa.resetMatch();assert.equal(ctx.qa.state.hp,350);assert.equal(ctx.qa.state.
 for(const z of [24,620])for(let x=-105;x<=105;x+=1)assert(!ctx.qa.collision(x,z));assert(ctx.qa.collision(120,24));
 // Both win and lose states must stop combat; a new match restores the core and controls.
 const core=ctx.qa.state.baseStructures.find(t=>!t.friendly);core.hp=0;ctx.qa.endIfTitanDestroyed(core);assert(ctx.qa.state.matchEnded);assert(!ctx.qa.state.active);ctx.qa.resetMatch();assert(!ctx.qa.state.matchEnded);assert(ctx.qa.state.active);assert(ctx.qa.state.baseStructures.every(t=>t.alive&&t.hp===2600));
+// Verify actual movement projected through the battle camera, then pointer dragging.
+ctx.qa.setPosition(0,24);now+=16;ctx.qa.frame(now);
+for(const direction of [-1,1]){
+ const before=ctx.qa.state.position.x;ctx.gf21Joy=()=>({x:direction,y:0});now+=16;ctx.qa.frame(now);
+ const {camera,position}=ctx.qa.state;camera.updateMatrixWorld();
+ const oldPoint=new Three.Vector3(before,0,position.z).project(camera),newPoint=new Three.Vector3(position.x,0,position.z).project(camera);
+ assert.equal(Math.sign(newPoint.x-oldPoint.x),direction,'stick must move in its screen direction');
+}
+ctx.gf21Joy=()=>({x:0,y:0});
+const battleCanvas=get('battle').children.find(e=>e.id==='gf21Battle');
+for(const direction of [-1,1]){const before=ctx.qa.state.yaw;battleCanvas.listeners.pointerdown({pointerId:7,clientX:100,clientY:100});battleCanvas.listeners.pointermove({pointerId:7,clientX:100+direction*30,clientY:100});assert.equal(Math.sign(ctx.qa.state.yaw-before),-direction);battleCanvas.listeners.lostpointercapture();const stopped=ctx.qa.state.yaw;battleCanvas.listeners.pointermove({pointerId:7,clientX:300,clientY:100});assert.equal(ctx.qa.state.yaw,stopped);}
+
 // Exercise actual simulation and render pipeline with all terrain/actors present.
 for(let i=0;i<80;i++){now+=16;ctx.qa.frame(now)}ctx.qa.spawnWave();for(let i=0;i<80;i++){now+=16;ctx.qa.frame(now)}
 let meshes=0;ctx.qa.state.scene.traverse(o=>{if(o.isMesh){meshes++;assert(Number.isFinite(o.position.y));}});
-console.log(`PASS: ${variants} unique three-color helmets; full scene (${meshes} meshes), 24 stronger dogs, arched surface heights, leap trajectory, death timer, attack cooldown, win/restart and simulation frames.`);
+console.log(`PASS: ${variants} unique three-color helmets; full scene (${meshes} meshes), 24 stronger dogs, arched surface heights, leap trajectory, death timer, attack cooldown, win/restart screen-relative controls, pointer release, and simulation frames.`);

@@ -4,15 +4,19 @@
  window.GFDisposeFigure=dispose;
  const surfaceMaps=new Map();
  function material(T,color,kind){
-  const m=new T.MeshStandardMaterial({color,metalness:kind==='metal'?.82:0,roughness:kind==='metal'?.34:kind==='skin'?.72:.92});
-  if(!surfaceMaps.has(kind)){const size=128,data=new Uint8Array(size*size*4);for(let y=0;y<size;y++)for(let x=0;x<size;x++){const noise=(Math.sin(x*91.7+y*17.31)*43758.5)%1;const value=kind==='cloth'?135+((x%4<2)===(y%4<2)?34:-24)+noise*9:kind==='metal'?175+Math.sin(y*1.8)*12+noise*22:170+noise*20;const i=(y*size+x)*4;data[i]=data[i+1]=data[i+2]=value;data[i+3]=255}const texture=new T.DataTexture(data,size,size);texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(3,3);texture.needsUpdate=true;surfaceMaps.set(kind,texture)}
-  m.bumpMap=surfaceMaps.get(kind);m.bumpScale=kind==='cloth'?.012:kind==='skin'?.002:.004;return m;
+  const m=new T.MeshPhysicalMaterial({color,metalness:kind==='metal'?.68:0,roughness:kind==='metal'?.38:kind==='skin'?.6:.88,clearcoat:kind==='metal'?.16:0,clearcoatRoughness:.45,sheen:kind==='cloth'?.35:0,sheenColor:new T.Color(color),sheenRoughness:.9});
+  if(!surfaceMaps.has(kind)){const size=128,data=new Uint8Array(size*size*4);for(let y=0;y<size;y++)for(let x=0;x<size;x++){const raw=Math.sin(x*91.7+y*17.31)*43758.5,noise=raw-Math.floor(raw);const value=kind==='cloth'?135+((x%4<2)===(y%4<2)?34:-24)+noise*9:kind==='metal'?165+Math.sin(y*1.8)*7+noise*15:160+noise*25;const i=(y*size+x)*4;data[i]=data[i+1]=data[i+2]=value;data[i+3]=255}const texture=new T.DataTexture(data,size,size);texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(3,3);texture.needsUpdate=true;surfaceMaps.set(kind,texture)}
+  m.roughnessMap=surfaceMaps.get(kind);m.bumpMap=surfaceMaps.get(kind);m.bumpScale=kind==='cloth'?.012:kind==='skin'?.002:.004;return m;
  }
 
  function helpers(T,root){
   const mesh=(g,m,x=0,y=0,z=0,p=root)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;p.add(o);return o};
   const ell=(x,y,z,sx,sy,sz,m,p=root)=>{const o=mesh(new T.SphereGeometry(1,24,16),m,x,y,z,p);o.scale.set(sx,sy,sz);return o};
-  const box=(x,y,z,w,h,d,m,p=root)=>mesh(new T.BoxGeometry(w,h,d),m,x,y,z,p);
+  const box=(x,y,z,w,h,d,m,p=root)=>{
+   if(Math.min(w,h,d)<.03)return mesh(new T.BoxGeometry(w,h,d),m,x,y,z,p);
+   const r=Math.min(w,h,d)*.16,shape=new T.Shape();shape.moveTo(-w/2+r,-h/2+r);shape.lineTo(w/2-r,-h/2+r);shape.lineTo(w/2-r,h/2-r);shape.lineTo(-w/2+r,h/2-r);shape.closePath();
+   const geo=new T.ExtrudeGeometry(shape,{depth:Math.max(.005,d-2*r),bevelEnabled:true,bevelThickness:r,bevelSize:r,bevelSegments:1,steps:1});geo.translate(0,0,-d/2+r);return mesh(geo,m,x,y,z,p);
+  };
   const cyl=(x,y,z,r1,r2,h,m,p=root)=>mesh(new T.CylinderGeometry(r1,r2,h,20),m,x,y,z,p);
   const line=(pts,r,m,p=root)=>mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts.map(a=>new T.Vector3(...a))),Math.max(8,pts.length*5),r,6,false),m,0,0,0,p);
   const shell=(x,y,z,rx,ry,rz,m,start=0,length=Math.PI*2,p=root)=>{const o=mesh(new T.SphereGeometry(1,32,20,start,length,0,Math.PI*.62),m,x,y,z,p);o.scale.set(rx,ry,rz);return o};
@@ -102,13 +106,13 @@
   const torsoPoints=[[.28,1.44],[.32,1.58],[heavy?.43:.32,1.85],[female?.41:.44,2.13],[female?.4:.46,2.35],[.3,2.45]].map(([r,y])=>new T.Vector2(r,y));
   const torso=mesh(new T.LatheGeometry(torsoPoints,36),fabric);torso.scale.z=.63;
   cyl(0,2.5,0,.105,.13,.16,skin);
-  const head=ell(0,2.85,.005,.205,.275,.19,skin);ell(0,2.7,.035,.155,.13,.143,skin);
+  const head=ell(0,2.86,-.014,.192,.266,.18,skin);ell(0,2.715,.035,.143,.125,.131,skin);ell(0,2.66,.09,.093,.055,.072,skin);for(const side of [-1,1])ell(side*.112,2.79,.127,.071,.065,.041,skin);
   for(const s of [-1,1]){
    ell(s*.203,2.83,-.005,.038,.071,.031,skin);
    ell(s*.073,2.89,.175,.034,.011,.01,white);ell(s*.073,2.89,.188,.01,.01,.004,dark);
    line([[s*.03,2.936,.181],[s*.08,2.946,.177],[s*.121,2.934,.16]],.009,hair);
   }
-  ell(0,2.84,.19,.023,.053,.035,skin);line([[-.045,2.752,.158],[0,2.747,.171],[.045,2.752,.158]],.006,material(T,'#68473b','skin'));
+  ell(0,2.85,.17,.021,.061,.035,skin);ell(0,2.812,.197,.028,.022,.027,skin);for(const side of [-1,1])ell(side*.025,2.805,.188,.017,.012,.015,skin);line([[-.045,2.752,.158],[0,2.747,.171],[.045,2.752,.158]],.006,material(T,'#68473b','skin'));
   shell(0,2.92,-.018,.213,.21,.196,hair);
   // Anatomical limbs, fitted sleeves and gloves; no oversized floating pauldrons.
   for(const s of [-1,1]){
