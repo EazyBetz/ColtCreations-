@@ -2,7 +2,7 @@
 window.GFWorldRules={
  bridges:[{x:-48,z:24,axis:'x'},{x:48,z:24,axis:'x'},{x:-48,z:620,axis:'x'},{x:48,z:620,axis:'x'},{x:Math.sin(330*.013)*4+Math.sin(330*.031)*1.7,z:330,axis:'z'}],
  bridgeHeight(t){return .32+1.45*Math.sin(Math.PI*Math.max(0,Math.min(1,t)))**2},
- surfaceHeight(x,z){for(const b of this.bridges){const along=b.axis==='x'?x-b.x:z-b.z,across=b.axis==='x'?z-b.z:x-b.x;if(Math.abs(along)<=16&&Math.abs(across)<=6)return this.bridgeHeight((along+16)/32)}return z<55||z>589?.32:.11},
+ surfaceHeight(x,z){for(const b of this.bridges){const along=b.axis==='x'?x-b.x:z-b.z,across=b.axis==='x'?z-b.z:x-b.x;if(Math.abs(along)<=16&&Math.abs(across)<=6)return this.bridgeHeight((along+16)/32)}return z<95||z>549?.32:.11},
  leapPoint(from,to,t){t=Math.max(0,Math.min(1,t));return {x:from.x+(to.x-from.x)*t,z:from.z+(to.z-from.z)*t,y:4*4.4*t*(1-t)}},
  dogs:{campZ:[215,405,555],perCamp:4,health:420,alphaHealth:720,damage:28,alphaDamage:45,respawn:45000}
 };

@@ -40,7 +40,7 @@ ctx.qa.receiveDamage(1000,now);assert.equal(ctx.qa.state.hp,0);assert.equal(ctx.
 // Basic attack spam must not multiply damage within the swing interval.
 const tower=ctx.qa.state.mobs.find(m=>!m.friendly);ctx.qa.setPosition(tower.x,tower.z-4);ctx.qa.clearCooldown();ctx.qa.hit();const hpAfter=tower.hp;ctx.qa.hit();assert.equal(tower.hp,hpAfter);assert(hpAfter<tower.max);
 ctx.qa.resetMatch();assert.equal(ctx.qa.state.hp,350);assert.equal(ctx.qa.state.mobs.length,18);assert(ctx.qa.state.mobs.every(m=>m.hp===m.max));
-for(const z of [24,620])for(let x=-105;x<=105;x+=1)assert(!ctx.qa.collision(x,z));assert(ctx.qa.collision(120,24));
+for(const z of [-48,24,54,74,570,590,620,692])for(let x=-105;x<=105;x+=1)assert(!ctx.qa.collision(x,z));assert(ctx.qa.collision(120,24));
 // Both win and lose states must stop combat; a new match restores the core and controls.
 const core=ctx.qa.state.baseStructures.find(t=>!t.friendly);core.hp=0;ctx.qa.endIfTitanDestroyed(core);assert(ctx.qa.state.matchEnded);assert(!ctx.qa.state.active);ctx.qa.resetMatch();assert(!ctx.qa.state.matchEnded);assert(ctx.qa.state.active);assert(ctx.qa.state.baseStructures.every(t=>t.alive&&t.hp===2600));
 // Verify actual movement projected through the battle camera, then pointer dragging.
