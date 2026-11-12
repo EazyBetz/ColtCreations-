@@ -623,6 +623,8 @@ const GF21 = (() => {
   for(const side of [-1,1])for(const z of [145,255,435,495])ruin(side*72,z,.8);
   for(const side of [-1,1])for(const z of [110,290,470,610])ruin(side*145,z,1.7);
   for(const side of [-1,1])for(const z of [285,365]){const x=side*73;ruin(x,z,1);const plinth=mesh(new T.CylinderGeometry(3,3.5,2,16),marble,x,1,z+14);mesh(new T.CylinderGeometry(1,1.8,5,16),limestone,x,4.5,z+14);mesh(new T.SphereGeometry(1.2,20,14),marble,x,8,z+14);for(const arm of [-1,1]){const a=mesh(new T.CylinderGeometry(.35,.5,4,12),marble,x+arm*1.7,5.7,z+14);a.rotation.z=arm*.5;}for(let j=0;j<9;j++)mesh(new T.IcosahedronGeometry(.5,1),moss,x+Math.sin(j*2)*4,.6,z+14+Math.cos(j*2)*4);}
+  // Authored garden walls stay outside the lane and crossing clearances.
+  for(const side of [-1,1])for(const z of [185,265,385,465]){const x=side*73;mesh(new T.BoxGeometry(1.2,3.2,22),limestone,x,1.6,z);mesh(new T.BoxGeometry(1.6,.35,23),marble,x,3.35,z);for(const dz of [-11,0,11]){mesh(new T.BoxGeometry(2,4,2),marble,x,2,z+dz);mesh(new T.SphereGeometry(.65,16,12),bronze,x,4.5,z+dz);}for(let j=0;j<7;j++)mesh(new T.IcosahedronGeometry(.65,1),moss,x+side*.8,3.4-j*.15,z-8+j*2.5);}
   // Coastal horizon beyond the walkable mainland, with monumental island ruins.
   const seaMat=new T.MeshPhysicalMaterial({color:'#329eae',roughness:.22,metalness:.25,clearcoat:1});
   for(const side of [-1,1]){const sea=mesh(new T.PlaneGeometry(550,1300),seaMat,side*470,-1,320);sea.rotation.x=-Math.PI/2;sea.name='coastal-sea';
@@ -874,7 +876,7 @@ const GF21 = (() => {
   }
   if(best){best.hp-=(strike===3?55:30)+powerBonus*.4;
    if(best.hp<=0)finishMob(best,true)
-   $('status').textContent=best.kind.toUpperCase()+' '+Math.max(0,best.hp)+'/'+best.max+' HP · '+strike+'/3 COMBO';
+   $('status').textContent=best.kind.toUpperCase()+' '+Math.max(0,Math.ceil(best.hp))+'/'+best.max+' HP · '+strike+'/3 COMBO';
   }
  }
  function spellPart(geometry,mat,x,y,z,group){return mesh(geometry,mat,x,y,z,group)}
