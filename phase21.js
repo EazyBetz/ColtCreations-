@@ -250,9 +250,9 @@ const GF21 = (() => {
  function cobblestoneLanes(){let edge=material('#514f49');const cobble=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:1});for(let l=-1;l<=1;l++){ribbon(l,15,edge,.045);ribbon(l,12.8,cobble,.105);for(let z=95;z<549;z+=14){for(let side of [-1,1]){let x=laneX(l,z)+side*7.65;let curb=mesh(new T.BoxGeometry(.85,.36,3.5),material((Math.floor(z/14)%3)?'#6a685f':'#77736a'),x,.20,z);curb.rotation.y=Math.sin(z*.013+l*2.3)*.05}}}}
  // Open, water-free sanctuary terraces; all props stay outside the walking area.
  function sanctuary(x,z,friendly){
-  const g=new T.Group();g.position.set(x,0,z);g.userData.baseZone='sanctuary';scene.add(g);
+  const g=new T.Group();g.position.set(x,4,z);g.userData.baseZone='sanctuary';scene.add(g);
   const stone=surface('slate','#c8c5ad',3),trim=material('#b7a476',.3),accent=new T.MeshStandardMaterial({color:friendly?'#83bdc5':'#b97586',emissive:friendly?'#24525a':'#512331',emissiveIntensity:.4,roughness:.7});
-  mesh(new T.CylinderGeometry(18,18,.24,64),stone,0,.2,0,g);
+  // The basilica platform supplies the floor; no overlapping sanctuary slab.
   const ring=mesh(new T.TorusGeometry(17,.09,6,80),trim,0,.34,0,g);ring.rotation.x=Math.PI/2;
   const seal=mesh(new T.RingGeometry(3.7,4,48),accent,0,.335,0,g);seal.rotation.x=-Math.PI/2;
   for(const side of [-1,1]){mesh(new T.BoxGeometry(5,.8,1.6),stone,side*14,.7,friendly?-8:8,g);mesh(new T.BoxGeometry(.6,3.4,.6),trim,side*20,1.7,0,g);mesh(new T.SphereGeometry(.3,12,8),accent,side*20,3.6,0,g);}
@@ -287,6 +287,19 @@ const GF21 = (() => {
     const boss=mesh(new T.TorusGeometry(.55,.12,6,24),bronze,x-side*1.4,6.7,z);boss.rotation.y=Math.PI/2;
    }
    for(const side of [-1,1]){const x=side*27,z=spawnZ+ (friendly?12:-12);mesh(new T.CylinderGeometry(.7,1,2.4,12),roman,x,1.5,z);mesh(new T.SphereGeometry(1,16,8,0,Math.PI*2,0,Math.PI/2),bronze,x,2.7,z).rotation.x=Math.PI;mesh(new T.ConeGeometry(.65,1.7,9),new T.MeshStandardMaterial({color:'#ffc875',emissive:'#ff7b24',emissiveIntensity:2.4}),x,3.4,z);}
+   // A raised basilica replaces the flat rear spawn. Stairs share the movement height rule.
+   const rear=friendly?-48:692,dir=friendly?1:-1;
+   mesh(new T.BoxGeometry(48,4,36),roman,0,2.32,rear-4*dir);
+   for(let step=0;step<16;step++){const z=(friendly?-34:678)+dir*(step+.5),h=4-(step*.25);mesh(new T.BoxGeometry(48,h,1.02),roman,0,.32+h/2,z);}
+   for(const side of [-1,1]){
+    mesh(new T.BoxGeometry(1.8,7,36),roman,side*24,7.8,rear-4*dir);
+    for(const offset of [-14,-3,8]){mesh(new T.CylinderGeometry(1,1.3,13,20),roman,side*20,10.8,rear+offset*dir);mesh(new T.BoxGeometry(3,.8,3),roman,side*20,17.7,rear+offset*dir);}
+    mesh(new T.BoxGeometry(3,1.4,34),roman,side*20,18.5,rear-3*dir);
+   }
+   mesh(new T.BoxGeometry(48,15,2),roman,0,11.8,rear-21*dir);
+   const vault=mesh(new T.TorusGeometry(20,1.1,12,48,Math.PI),roman,0,18,rear+9*dir);vault.name='basilica-vault';
+   const dome=mesh(new T.SphereGeometry(20,32,16,0,Math.PI*2,0,Math.PI/2),surface('masonry','#b3c3bb',2),0,18,rear-8*dir);dome.scale.set(1,.55,.65);
+   for(const side of [-1,1]){mesh(new T.BoxGeometry(4,8,.12),banner,side*14,12,rear-19.8*dir);const mosaic=mesh(new T.TorusGeometry(3,.22,8,40),bronze,side*10,11,rear-19.7*dir);}
    const spawn=sanctuary(laneX(0,spawnZ),spawnZ,friendly);if(friendly)baseFountain=spawn;
   }
  }
@@ -358,7 +371,7 @@ const GF21 = (() => {
   m.hp=m.max=role==='vanguard'?340:role==='archer'?145:175;
   m.damage=role==='vanguard'?8:role==='archer'?3:4;
   m.xpReward=role==='vanguard'?75:25;m.goldReward=role==='vanguard'?45:14;
-  m.root.scale.setScalar(role==='vanguard'?.40:.28);
+  m.root.scale.setScalar(role==='vanguard'?.52:.39);
   m.weaponPivot=new T.Group();m.weaponPivot.position.set(.95,2.5,.5);m.root.add(m.weaponPivot);
   if(role==='archer'){
    const bow=mesh(new T.TorusGeometry(.58,.06,6,16,Math.PI),material('#a27643'),0,0,0,m.weaponPivot);bow.rotation.y=Math.PI/2;
@@ -393,7 +406,7 @@ const GF21 = (() => {
    const heritageId=({Aegis:'greece',Ember:'japan',Riven:'europe',Nyx:'egypt',Thorn:'norse'})[name];
    const heritage=window.GFHeritages[heritageId];
    const botConfig={heritage:heritageId,heritageArmor:heritage.armor[2][0],heritageWeapon:heritage.weapons[1][0],armorColor:heritage.metal,trimColor:heritage.color,clothColor:heritage.cloth,skin:'#ae8169',hairColor:'#30241f',sex:name==='Nyx'||name==='Ember'?'Female':'Male',body:'Athletic',heritageHelmet:true};
-   window.GFGodAppearance(root,T,mesh,material,{config:botConfig,weapon:false});
+   window.GFGodAppearance(root,T,mesh,material,{config:botConfig,weapon:false});root.scale.setScalar(1.2);
    const pivot=new T.Group();pivot.position.set(root.userData.handX||.6,1.36,.06);root.add(pivot);pivot.add(window.GFBuildHeritageWeapon(T,botConfig));
    bots.push({name,friendly,lane,x,z,root,pivot,hp:310,max:310,alive:true,attackClock:1,attackPose:0,spellClock:4+Math.random()*4,respawnAt:0,spawnSpinUntil:performance.now()+1600});
   }
@@ -518,14 +531,22 @@ const GF21 = (() => {
    const rim=mesh(new T.TorusGeometry(radius,.32,6,64),material('#8e6b48'),x,.15,z);rim.rotation.x=Math.PI/2;
    for(let i=0;i<28;i++){const a=i*Math.PI*2/28,rr=radius-2.3;const grass=mesh(new T.ConeGeometry(.4,1.7,4),material(i%2?'#385e39':'#4b7744'),x+Math.cos(a)*rr,.8,z+Math.sin(a)*rr);grass.rotation.z=Math.sin(a)*.24}
    for(let i=0;i<GFWorldRules.dogs.perCamp;i++){
-    const root=new T.Group();root.userData.dynamic=true;scene.add(root);const alpha=i===3;root.scale.setScalar(alpha?1.35:1);
-    const body=mesh(new T.SphereGeometry(1.05,10,8),hide,0,1.1,0,root);body.scale.set(.72,.75,1.5);
-    mesh(new T.SphereGeometry(.64,10,8),dark,0,1.35,1.23,root);
-    for(const sx of [-1,1]){const ear=mesh(new T.ConeGeometry(.23,.7,5),dark,sx*.42,1.99,1.2,root);ear.rotation.z=sx*.2;mesh(new T.SphereGeometry(.13,7,6),glow,sx*.28,1.52,1.77,root);
-     for(const fz of [-.85,.85])mesh(new T.CylinderGeometry(.2,.24,.9,6),dark,sx*.49,.46,fz,root);
+    const root=new T.Group();root.userData.dynamic=true;scene.add(root);const alpha=i===3;root.scale.setScalar(alpha?1.15:.95);
+    const coat=material(alpha?'#748e8a':'#9daea3',.8),armor=material('#a78a51',.4),legs=[];
+    const ell=(x,y,z,a,b,c,m)=>{const o=mesh(new T.SphereGeometry(1,20,14),m,x,y,z,root);o.scale.set(a,b,c);return o};
+    ell(0,1.6,-.15,.64,.72,1.3,coat);ell(0,1.85,.8,.69,.84,.65,coat);ell(0,1.55,-1.12,.58,.62,.56,coat);
+    const neck=ell(0,2.25,1,.45,.75,.48,coat);neck.rotation.x=.35;
+    ell(0,2.75,1.45,.43,.46,.57,coat);ell(0,2.57,1.99,.29,.24,.52,coat);ell(0,2.61,2.4,.23,.16,.16,dark);
+    ell(0,2.37,1.98,.26,.1,.4,dark);
+    for(const side of [-1,1]){
+     const ear=mesh(new T.ConeGeometry(.24,.65,12),coat,side*.3,3.22,1.25,root);ear.rotation.z=-side*.25;
+     ell(side*.33,2.86,1.77,.08,.075,.08,new T.MeshStandardMaterial({color:'#9eece2',emissive:'#238c88',emissiveIntensity:.5}));
+     for(const z of [-.95,.8]){const leg=new T.Group();leg.position.set(side*.48,1.4,z);root.add(leg);mesh(new T.CylinderGeometry(.15,.22,.95,12),coat,0,-.36,0,leg);mesh(new T.CylinderGeometry(.11,.15,.65,12),coat,0,-1.02,.08,leg);mesh(new T.SphereGeometry(.21,12,8),coat,0,-1.3,.23,leg).scale.set(1,.6,1.5);legs.push(leg);}
+     ell(side*.56,1.98,.75,.13,.48,.6,armor);
     }
-    for(const sx of [-1,1])mesh(new T.ConeGeometry(.13,.43,5),fang,sx*.25,1.03,1.8,root).rotation.x=Math.PI;
-    for(let k=0;k<4;k++)mesh(new T.ConeGeometry(.29,.55,5),dark,0,1.95,-.6+k*.36,root);
+    const collar=mesh(new T.TorusGeometry(.48,.1,8,32),armor,0,2.31,1.1,root);collar.rotation.x=.45;
+    const tailCurve=new T.CatmullRomCurve3([new T.Vector3(0,1.6,-1.3),new T.Vector3(0,1.45,-2),new T.Vector3(0,2,-2.6),new T.Vector3(.2,2.35,-2.7)]);mesh(new T.TubeGeometry(tailCurve,16,.12,8,false),coat,0,0,0,root);
+    root.userData.guardianLegs=legs;
     const dx=Math.cos(i*Math.PI/2)*6,dz=Math.sin(i*Math.PI/2)*6;root.position.set(x+dx,0,z+dz);
     demonDogs.push({root,homeX:x,homeZ:z,x:x+dx,z:z+dz,radius:radius-2.6,hp:alpha?GFWorldRules.dogs.alphaHealth:GFWorldRules.dogs.health,max:alpha?GFWorldRules.dogs.alphaHealth:GFWorldRules.dogs.health,damage:alpha?GFWorldRules.dogs.alphaDamage:GFWorldRules.dogs.damage,alpha,alive:true,respawnAt:0,attackClock:.6,attackPose:0});
    }
@@ -540,16 +561,16 @@ const GF21 = (() => {
    let tx=target?target.x:dog.homeX+Math.sin(now*.0007+dog.homeZ)*5,tz=target?target.z:dog.homeZ+Math.cos(now*.0007+dog.homeX)*5;
    const distance=Math.hypot(tx-dog.x,tz-dog.z);
    if(!target)dog.hp=Math.min(dog.max,dog.hp+dt*18);
-   if(distance>2.8&&!dog.pendingBite){const move=Math.min(distance-2.5,dt*(target?5.7:2));dog.x+=(tx-dog.x)/distance*move;dog.z+=(tz-dog.z)/distance*move}
+   if(distance>2.8&&!dog.pendingBite){const move=Math.min(distance-2.5,dt*(target?4.2:1.7));dog.x+=(tx-dog.x)/distance*move;dog.z+=(tz-dog.z)/distance*move}
    const homeDistance=Math.hypot(dog.x-dog.homeX,dog.z-dog.homeZ);
    if(homeDistance>dog.radius){dog.x=dog.homeX+(dog.x-dog.homeX)/homeDistance*dog.radius;dog.z=dog.homeZ+(dog.z-dog.homeZ)/homeDistance*dog.radius}
    dog.attackClock-=dt;
-   if(target&&dist<4&&dog.attackClock<=0&&!dog.pendingBite){dog.attackClock=1.7;dog.pendingBite={target,at:now+450};dog.attackPose=.45;}
-   if(dog.pendingBite&&now>=dog.pendingBite.at){const t=dog.pendingBite.target;dog.pendingBite=null;const tx=t.player?position.x:t.x,tz=t.player?position.z:t.z;if(Math.hypot(tx-dog.x,tz-dog.z)<4.2){
+   if(target&&dist<3.4&&dog.attackClock<=0&&!dog.pendingBite){dog.attackClock=2.6;dog.pendingBite={target,at:now+800};dog.attackPose=.8;}
+   if(dog.pendingBite&&now>=dog.pendingBite.at){const t=dog.pendingBite.target;dog.pendingBite=null;const tx=t.player?position.x:t.x,tz=t.player?position.z:t.z;if(Math.hypot(tx-dog.x,tz-dog.z)<3.6){
     if(t.player&&jumpHeight<1.8)receiveDamage(dog.damage,now);
     else if(!t.player&&t.alive){t.hp=Math.max(0,t.hp-dog.damage);if(!t.hp){t.alive=false;t.root.visible=false;t.respawnAt=now+11000}}
    }}
-   dog.attackPose=Math.max(0,dog.attackPose-dt);
+   dog.attackPose=Math.max(0,dog.attackPose-dt);for(const [i,leg] of (dog.root.userData.guardianLegs||[]).entries())leg.rotation.x=distance>2.8&&!dog.pendingBite?Math.sin(now*.008+(i===0||i===3?0:Math.PI))*.42:0;
    dog.root.position.set(dog.x,Math.sin(now*.009+dog.homeZ)*.07+(dog.attackPose?Math.sin(dog.attackPose*9)*.35:0),dog.z);
    if(distance>.01)dog.root.rotation.y=Math.atan2(tx-dog.x,tz-dog.z);
   }
@@ -601,6 +622,7 @@ const GF21 = (() => {
   }
   for(const side of [-1,1])for(const z of [145,255,435,495])ruin(side*72,z,.8);
   for(const side of [-1,1])for(const z of [110,290,470,610])ruin(side*145,z,1.7);
+  for(const side of [-1,1])for(const z of [285,365]){const x=side*73;ruin(x,z,1);const plinth=mesh(new T.CylinderGeometry(3,3.5,2,16),marble,x,1,z+14);mesh(new T.CylinderGeometry(1,1.8,5,16),limestone,x,4.5,z+14);mesh(new T.SphereGeometry(1.2,20,14),marble,x,8,z+14);for(const arm of [-1,1]){const a=mesh(new T.CylinderGeometry(.35,.5,4,12),marble,x+arm*1.7,5.7,z+14);a.rotation.z=arm*.5;}for(let j=0;j<9;j++)mesh(new T.IcosahedronGeometry(.5,1),moss,x+Math.sin(j*2)*4,.6,z+14+Math.cos(j*2)*4);}
   // Coastal horizon beyond the walkable mainland, with monumental island ruins.
   const seaMat=new T.MeshPhysicalMaterial({color:'#329eae',roughness:.22,metalness:.25,clearcoat:1});
   for(const side of [-1,1]){const sea=mesh(new T.PlaneGeometry(550,1300),seaMat,side*470,-1,320);sea.rotation.x=-Math.PI/2;sea.name='coastal-sea';
@@ -612,7 +634,7 @@ const GF21 = (() => {
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
  function applyStyle(root){window.GFGodAppearance?.(root,T,mesh,material)}
- async function getGod(){const root=new T.Group();window.GFGodAppearance(root,T,mesh,material,{weapon:false});return root}
+ async function getGod(){const root=new T.Group();root.scale.setScalar(1.2);window.GFGodAppearance(root,T,mesh,material,{weapon:false});return root}
  let appliedHeritage='';
  function refreshHeritage(){if(!hero||!T)return;const c=window.gfGetConfig();const key=window.GFLoadoutKey?.(c);if(key===appliedHeritage)return;window.GFGodAppearance(hero,T,mesh,material,{weapon:false});appliedHeritage=key;buildPhysicalWeapon(c.weapon)}
 
@@ -657,7 +679,7 @@ const GF21 = (() => {
   }
   let hp=tower?220:65;return {root,x,z,hp,max:hp,kind,alive:true,friendly,speed:0};
  }
- function spawn(){for(let side of [true,false])for(let lane=-1;lane<=1;lane++)for(let tier=0;tier<3;tier++){const z=side?[235,155,75][tier]:[409,489,569][tier];const x=laneX(lane,z),m=createMob(x,z,'tower');m.friendly=side;m.lane=lane;m.tier=tier;m.max=m.hp=[320,510,780][tier];m.root.scale.setScalar([.85,1.1,1.35][tier]);m.root.traverse(o=>{if(o.isMesh&&o.material?.emissive)o.material.emissiveIntensity=1+tier*.45});mobs.push(m);towerZone(x,z,19+tier*2,side,tier)}buildFinalTitans();for(let b of buffs){let c=b.kind==='POWER'?'#e94849':b.kind==='SPEED'?'#40bbf5':'#70e29c';b.orb=mesh(new T.IcosahedronGeometry(1.6,1),material(c,.2),b.x,2.4,b.z);b.orb.userData.kind=b.kind}}
+ function spawn(){for(let side of [true,false])for(let lane=-1;lane<=1;lane++)for(let tier=0;tier<3;tier++){const z=side?[235,155,75][tier]:[409,489,569][tier];const x=laneX(lane,z),m=createMob(x,z,'tower');m.friendly=side;m.lane=lane;m.tier=tier;m.max=m.hp=[320,510,780][tier];m.root.scale.setScalar([1,1.28,1.55][tier]);m.root.traverse(o=>{if(o.isMesh&&o.material?.emissive)o.material.emissiveIntensity=1+tier*.45});mobs.push(m);towerZone(x,z,19+tier*2,side,tier)}buildFinalTitans();for(let b of buffs){let c=b.kind==='POWER'?'#e94849':b.kind==='SPEED'?'#40bbf5':'#70e29c';b.orb=mesh(new T.IcosahedronGeometry(1.6,1),material(c,.2),b.x,2.4,b.z);b.orb.userData.kind=b.kind}}
 
  function laneApproach(lane,z,friendly){
   // Both ends converge on their boss, including attacking side-lane troops.
@@ -751,7 +773,7 @@ const GF21 = (() => {
   for(const b of bots)if(b.alive&&inSanctuary(b.x,b.z,!b.friendly)){b.hp=0;b.alive=false;b.root.visible=false;b.respawnAt=now+11000}
   if(hp>0&&inSanctuary(position.x,position.z,false)){hp=0;$('status').textContent='ENEMY SANCTUARY · LETHAL WATERS'}
  }
- function collision(x,z){if(Math.abs(x)>110||z<-70||z>714)return true;if(z<95||z>549)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);let jungleEntry=demonDogs.some(d=>Math.abs(z-d.homeZ)<7&&Math.abs(x-d.homeX)<49);return !(nearest||crossing||camp||grass||jungleEntry)}
+ function collision(x,z){if(Math.abs(x)>110||z<-70||z>714)return true;if(Math.min(z,644-z)<-34&&Math.abs(x)>22.5&&Math.abs(x)<25.5)return true;if(z<95||z>549)return false;let nearest=[-1,0,1].some(l=>Math.abs(x-laneX(l,z))<11);let crossing=[125,310,510].some(a=>Math.abs(z-a)<8&&Math.abs(x)<105);let camp=buffs.some(b=>Math.hypot(x-b.x,z-b.z)<10);let grass=demonDogs.some(d=>Math.hypot(x-d.homeX,z-d.homeZ)<d.radius+2);let jungleEntry=demonDogs.some(d=>Math.abs(z-d.homeZ)<7&&Math.abs(x-d.homeX)<49);return !(nearest||crossing||camp||grass||jungleEntry)}
 
  // Animated physical weapon, attached to the character's hand position, not the VFX.
  function buildPhysicalWeapon(type){
@@ -935,7 +957,7 @@ const GF21 = (() => {
   for(const [actors,values] of [[bots,data.bots],[demonDogs,data.dogs],[baseStructures,data.bosses]])for(let i=0;i<actors.length;i++){const e=actors[i],v=values?.[i];if(!v)continue;Object.assign(e,{hp:v.hp,alive:v.alive,x:v.x,z:v.z});e.root.visible=!!v.alive;e.root.position.set(v.x,floorAt(v.x,v.z),v.z);e.root.rotation.y=v.rotation||0;}
   // The human replaces the first allied AI on both peers.
   if(remoteBot)remoteBot.root.visible=false;
-  if(!coop.hostFigure){coop.hostFigure=new T.Group();window.GFGodAppearance(coop.hostFigure,T,mesh,material,{config:data.host.config,weapon:true});scene.add(coop.hostFigure)}
+  if(!coop.hostFigure){coop.hostFigure=new T.Group();window.GFGodAppearance(coop.hostFigure,T,mesh,material,{config:data.host.config,weapon:true});coop.hostFigure.scale.setScalar(1.2);scene.add(coop.hostFigure)}
   coop.hostFigure.visible=data.host.hp>0;coop.hostFigure.position.set(data.host.x,floorAt(data.host.x,data.host.z)+data.host.y,data.host.z);coop.hostFigure.rotation.y=data.host.yaw;
   position.x=data.guest.x;position.z=data.guest.z;jumpHeight=data.guest.y;hp=data.guest.hp;maxHp=data.guest.max;gold=data.gold;level=data.level;matchElapsed=data.time;
   $('gf27HP').textContent='HP '+Math.ceil(hp)+'/'+maxHp;$('gf27Gold').textContent='TEAM '+gold+' GOLD';$('gf27Level').textContent='LV '+level;$('gf35Timer').textContent='CO-OP '+Math.floor(matchElapsed/60)+':'+String(Math.floor(matchElapsed%60)).padStart(2,'0');

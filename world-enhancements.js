@@ -2,9 +2,10 @@
 window.GFWorldRules={
  bridges:[{x:-48,z:24,axis:'x'},{x:48,z:24,axis:'x'},{x:-48,z:620,axis:'x'},{x:48,z:620,axis:'x'},{x:-98,z:330,axis:'z'},{x:92,z:330,axis:'z'},{x:Math.sin(330*.013)*4+Math.sin(330*.031)*1.7,z:330,axis:'z'}],
  bridgeHeight(t){return .32+1.45*Math.sin(Math.PI*Math.max(0,Math.min(1,t)))**2},
- surfaceHeight(x,z){for(const b of this.bridges){const along=b.axis==='x'?x-b.x:z-b.z,across=b.axis==='x'?z-b.z:x-b.x;if(Math.abs(along)<=16&&Math.abs(across)<=6)return this.bridgeHeight((along+16)/32)}return z<95||z>549?.32:.11},
+ sanctuaryHeight(x,z){const d=Math.min(z,644-z);if(Math.abs(x)>=24||d>=-18)return .32;if(d<=-34)return 4.32;return .32+Math.ceil((-18-d)/1)*.25},
+ surfaceHeight(x,z){if(this.sanctuaryHeight(x,z)>.32)return this.sanctuaryHeight(x,z);for(const b of this.bridges){const along=b.axis==='x'?x-b.x:z-b.z,across=b.axis==='x'?z-b.z:x-b.x;if(Math.abs(along)<=16&&Math.abs(across)<=6)return this.bridgeHeight((along+16)/32)}return z<95||z>549?.32:.11},
  leapPoint(from,to,t){t=Math.max(0,Math.min(1,t));return {x:from.x+(to.x-from.x)*t,z:from.z+(to.z-from.z)*t,y:4*4.4*t*(1-t)}},
- dogs:{campZ:[215,405,555],perCamp:4,health:420,alphaHealth:720,damage:28,alphaDamage:45,respawn:45000}
+ dogs:{campZ:[215,405,555],perCamp:4,health:540,alphaHealth:850,damage:13,alphaDamage:20,respawn:45000}
 };
 window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
  const wood=surface('masonry','#c6c0a5',2),brick=surface('masonry','#b8b59d',3),slate=surface('slate','#ded5ba',2);

@@ -18,12 +18,13 @@ for(const [region,h] of Object.entries(ctx.GFHeritages))for(const helmet of h.he
 }
 assert.equal(variants,18);assert.equal(signatures.size,18);
 const rules=ctx.GFWorldRules;assert.equal(rules.bridges.length,7);for(const b of rules.bridges){assert.equal(rules.bridgeHeight(0),rules.bridgeHeight(1));assert(rules.surfaceHeight(b.x,b.z)>1.7);}
+assert.equal(rules.surfaceHeight(0,-48),4.32);assert.equal(rules.surfaceHeight(0,692),4.32);for(let z=-34;z<-18;z++)assert(rules.surfaceHeight(0,z)>=rules.surfaceHeight(0,z+1));
 const from={x:0,z:10},to={x:0,z:26};assert.equal(rules.leapPoint(from,to,0).y,0);assert.equal(rules.leapPoint(from,to,1).y,0);assert.equal(rules.leapPoint(from,to,.5).y,4.4);
 let source=read('phase21.js').replace("await import('https://esm.sh/three@0.170.0')",'TEST_THREE');
 source=source.replace(' return {getGod,fitGLB,applyStyle};',`return {laneApproach,inSanctuary,init,resetMatch,hit,cast,utility,frame,receiveDamage,updateBattleSystems,tickLeap,collision,updateDemonDogs,endIfTitanDestroyed,spawnWave,get state(){return {hp,maxHp,respawnAt,position,yaw,camera,jumpHeight,leap,mobs,bots,demonDogs,baseStructures,scene,matchEnded,active,matchElapsed}},setPosition(x,z){position={x,z}},setActive(){active=true},clearCooldown(){abilityReady=[0,0,0];utilityCooldown=0;attackReadyAt=0},setRecall(){recallUntil=now+4500},get recall(){return recallUntil}};`);
 // No exported test hooks in shipped source: this instrumentation exists only in this VM.
 vm.runInContext(source+'\nthis.qa=GF21;',ctx);await ctx.qa.init();let state=ctx.qa.state;
-assert(state.scene&&state.mobs.length===18,'full scene must initialize');assert.equal(state.demonDogs.length,24);assert(state.demonDogs.every(d=>d.hp>=420&&d.damage>=28));
+assert(state.scene&&state.mobs.length===18,'full scene must initialize');assert.equal(state.demonDogs.length,24);assert(state.demonDogs.every(d=>d.hp>=540&&d.damage<=20));
 // Base zoning and every lane's final approach must agree with gameplay coordinates.
 assert.equal(state.position.z,-48);assert(ctx.qa.inSanctuary(state.position.x,state.position.z,true));
 for(const boss of state.baseStructures){
@@ -34,13 +35,13 @@ for(const boss of state.baseStructures){
  const spawnZ=boss.friendly?-48:692;assert.equal(Math.abs(spawnZ-boss.z),46);
  assert(!ctx.qa.collision(boss.x,boss.z));assert(!ctx.qa.collision(0,spawnZ));
 }
-ctx.qa.spawnWave();const spawned=ctx.qa.state.mobs.filter(m=>m.kind!=='tower');assert.equal(spawned.length,36);assert(spawned.every(m=>m.root.scale.x<=.4),'minions must be much smaller than gods');assert.equal(new Set(spawned.map(m=>`${m.x},${m.z}`)).size,36);ctx.qa.resetMatch();
+ctx.qa.spawnWave();const spawned=ctx.qa.state.mobs.filter(m=>m.kind!=='tower');assert.equal(spawned.length,36);assert(spawned.every(m=>m.root.scale.x<=.52),'minions must be much smaller than gods');assert.equal(new Set(spawned.map(m=>`${m.x},${m.z}`)).size,36);ctx.qa.resetMatch();
 ctx.qa.setActive();ctx.qa.setPosition(0,24);ctx.qa.utility();assert(ctx.qa.state.leap);ctx.qa.tickLeap(.475);assert(ctx.qa.state.jumpHeight>4);ctx.qa.tickLeap(.475);assert.equal(ctx.qa.state.jumpHeight,0);assert.equal(ctx.qa.state.position.z,40);
 ctx.qa.receiveDamage(1000,now);assert.equal(ctx.qa.state.hp,0);assert.equal(ctx.qa.state.respawnAt,8000);now=2000;ctx.qa.updateBattleSystems(.016,now);assert.equal(ctx.qa.state.hp,0,'death must not instantly respawn');now=8100;ctx.qa.updateBattleSystems(.016,now);assert(ctx.qa.state.hp>0);assert.equal(ctx.qa.state.position.z,-48);
 // Basic attack spam must not multiply damage within the swing interval.
 const tower=ctx.qa.state.mobs.find(m=>!m.friendly);ctx.qa.setPosition(tower.x,tower.z-4);ctx.qa.clearCooldown();ctx.qa.hit();const hpAfter=tower.hp;ctx.qa.hit();assert.equal(tower.hp,hpAfter);assert(hpAfter<tower.max);
 ctx.qa.resetMatch();assert.equal(ctx.qa.state.hp,350);assert.equal(ctx.qa.state.mobs.length,18);assert(ctx.qa.state.mobs.every(m=>m.hp===m.max));
-for(const z of [-48,24,54,74,570,590,620,692])for(let x=-105;x<=105;x+=1)assert(!ctx.qa.collision(x,z));assert(ctx.qa.collision(120,24));
+for(const z of [24,54,74,570,590,620])for(let x=-105;x<=105;x+=1)assert(!ctx.qa.collision(x,z));assert(ctx.qa.collision(120,24));
 // Both win and lose states must stop combat; a new match restores the core and controls.
 const core=ctx.qa.state.baseStructures.find(t=>!t.friendly);core.hp=0;ctx.qa.endIfTitanDestroyed(core);assert(ctx.qa.state.matchEnded);assert(!ctx.qa.state.active);ctx.qa.resetMatch();assert(!ctx.qa.state.matchEnded);assert(ctx.qa.state.active);assert(ctx.qa.state.baseStructures.every(t=>t.alive&&t.hp===2600));
 // Verify actual movement projected through the battle camera, then pointer dragging.
