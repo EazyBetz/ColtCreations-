@@ -407,7 +407,7 @@ const GF21 = (() => {
    const heritage=window.GFHeritages[heritageId];
    const botConfig={heritage:heritageId,heritageArmor:heritage.armor[2][0],heritageWeapon:heritage.weapons[1][0],armorColor:heritage.metal,trimColor:heritage.color,clothColor:heritage.cloth,skin:'#ae8169',hairColor:'#30241f',sex:name==='Nyx'||name==='Ember'?'Female':'Male',body:'Athletic',heritageHelmet:true};
    window.GFGodAppearance(root,T,mesh,material,{config:botConfig,weapon:false});root.scale.setScalar(1.2);
-   const pivot=new T.Group();pivot.position.set(root.userData.handX||.6,1.36,.06);root.add(pivot);pivot.add(window.GFBuildHeritageWeapon(T,botConfig));
+   const pivot=new T.Group();const hand=root.userData.rig[1].hand;hand.add(pivot);pivot.add(window.GFBuildHeritageWeapon(T,botConfig));
    bots.push({name,friendly,lane,x,z,root,pivot,hp:310,max:310,alive:true,attackClock:1,attackPose:0,spellClock:4+Math.random()*4,respawnAt:0,spawnSpinUntil:performance.now()+1600});
   }
  }
@@ -443,6 +443,7 @@ const GF21 = (() => {
    b.root.position.set(b.x,floorAt(b.x,b.z),b.z);
    if(now<(b.spawnSpinUntil||0))b.root.rotation.y+=dt*11;
    b.attackPose=Math.max(0,b.attackPose-dt);
+   window.GFAnimateFigure(b.root,dt,{moving:d>4?1:0,attack:b.attackPose?1-b.attackPose/.42:0});
    b.pivot.rotation.z=b.attackPose?Math.sin((1-b.attackPose/.42)*Math.PI)*-1.3:0;
   }
  }
@@ -780,11 +781,11 @@ const GF21 = (() => {
  // Animated physical weapon, attached to the character's hand position, not the VFX.
  function buildPhysicalWeapon(type){
   if(!T||!modelRoot)return;
-  if(weaponRig){modelRoot.remove(weaponRig);weaponRig.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose()}})}
+  if(weaponRig){weaponRig.parent?.remove(weaponRig);weaponRig.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose()}})}
   activeWeapon=type+'|'+window.gfGetConfig().heritageWeapon;weaponRig=new T.Group();weaponRig.position.set(.9,2.12,.3);modelRoot.add(weaponRig);
   weaponGrip=new T.Group();weaponRig.add(weaponGrip);
   const regionalWeapon=window.GFBuildHeritageWeapon(T,window.gfGetConfig());weaponGrip.add(regionalWeapon);
-  weaponRig.position.set(hero?.userData.handX||.6,1.36,.06);
+  const hand=hero?.userData.rig?.[1]?.hand;if(hand){hand.add(weaponRig);weaponRig.position.set(0,0,0);}else weaponRig.position.set(hero?.userData.handX||.6,1.36,.06);
 
   weaponGrip.rotation.set(0,0,-.15);
  }
@@ -795,14 +796,14 @@ const GF21 = (() => {
   weaponAttackAge+=dt;
   const duration=selected==='War Axe'?.63:selected==='Spear'?.43:.48;
   const t=Math.min(1,weaponAttackAge/duration);
-  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);weaponRig.position.z=.06;return}
+  if(t>=1){weaponGrip.rotation.set(0,0,-.15);weaponRig.rotation.set(0,0,0);weaponRig.position.z=0;return}
   const swing=Math.sin(t*Math.PI);
   // Left, right, then overhead. Spear uses a forward thrust on the third hit.
   if(weaponAttackStep===3&&selected==='Spear'){
    weaponGrip.rotation.set(-.25-swing*.7,0,-.12);
-   weaponRig.position.z=.06+swing*2.1;
+   weaponRig.position.z=0;
   }else{
-   weaponRig.position.z=.06;
+   weaponRig.position.z=0;
    const direction=weaponAttackStep===2?-1:1;
    weaponGrip.rotation.set(-.3-swing*.75,0,(weaponAttackStep===3?0:direction*(1.25-2.6*t)));
    weaponRig.rotation.y=direction*swing*.48;
@@ -920,8 +921,8 @@ const GF21 = (() => {
  function frame(time){requestAnimationFrame(frame);if(!active||matchEnded||!renderer||document.hidden){prev=time;return}for(const t of summons){if(time>t.until){scene.remove(t.mesh);continue}if(time<t.next)continue;t.next=time+800;let target=mobs.find(m=>m.alive&&!m.friendly&&Math.hypot(m.x-t.x,m.z-t.z)<14);if(target){target.hp-=18+powerBonus*.3;if(target.hp<=0){target.alive=false;target.root.visible=false;gainGold(45)}}}summons=summons.filter(t=>time<t.until);if(!active||!renderer)return;let dt=Math.min(.04,(time-(prev||time))/1000);prev=time;const v=window.gfGetConfig?.();let j=window.joystick||null; // legacy joystick is lexical; bridge below supplies it.
  const input=window.gf21Joy?.()||{x:0,y:0};let forward=input.y,strafe=-input.x;if(battleKeys.has('w')||battleKeys.has('s'))forward=(battleKeys.has('w')?1:0)-(battleKeys.has('s')?1:0);if(battleKeys.has('a')||battleKeys.has('d'))strafe=(battleKeys.has('a')?1:0)-(battleKeys.has('d')?1:0);if(battleKeys.has('arrowleft'))yaw+=dt*1.8;if(battleKeys.has('arrowright'))yaw-=dt*1.8;const inputLength=Math.hypot(forward,strafe);if(inputLength>1){forward/=inputLength;strafe/=inputLength;} // Camera faces +Z: screen-right is the negative local X axis.
  let speed=dt*15*(time<speedBuffUntil?1.25:1)*(ownedItems[5]?1+ownedItems[5]*.08:1);let dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed,dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed;
- if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0||leap||coop&&!coop.host||shopPanel&&!shopPanel.hidden){dx=0;dz=0}let nx=position.x+dx,nz=Math.max(-70,Math.min(714,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
- if(!coop||coop.host)tickLeap(dt);refreshHeritage();modelRoot.position.set(position.x,floorAt(position.x,position.z)+jumpHeight+Math.sin(time*.009)*.025,position.z);modelRoot.visible=hp>0;modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
+ if(Math.hypot(dx,dz)>.025)recallUntil=0;if(hp<=0||leap||coop&&!coop.host||shopPanel&&!shopPanel.hidden){dx=0;dz=0}const oldX=position.x,oldZ=position.z;let nx=position.x+dx,nz=Math.max(-70,Math.min(714,position.z+dz));if(!collision(nx,position.z))position.x=nx;if(!collision(position.x,nz))position.z=nz;
+ if(!coop||coop.host)tickLeap(dt);refreshHeritage();window.GFAnimateFigure(hero,dt,{moving:Math.hypot(position.x-oldX,position.z-oldZ)/Math.max(.001,speed),backward:forward<0,attack:weaponAttackAge<(activeWeapon.startsWith('War Axe')?.63:activeWeapon.startsWith('Spear')?.43:.48)?Math.max(.001,weaponAttackAge/(activeWeapon.startsWith('War Axe')?.63:activeWeapon.startsWith('Spear')?.43:.48)):0,airborne:jumpHeight>.1});modelRoot.position.set(position.x,floorAt(position.x,position.z)+jumpHeight+Math.sin(time*.009)*.025,position.z);modelRoot.visible=hp>0;modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);const eyeHeight=floorAt(position.x,position.z)+jumpHeight*.55;camera.position.set(position.x-dirX*back,eyeHeight+4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,eyeHeight+2.2+pitch*3,position.z+dirZ*4);
  if(sunLight){sunLight.position.set(position.x-20,42,position.z+24);sunLight.target.position.set(position.x,0,position.z);}
  if(!coop||coop.host)updateBattleSystems(dt,time);coopFrame(dt,time);

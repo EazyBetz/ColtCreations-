@@ -17,6 +17,20 @@ for(const [region,h] of Object.entries(ctx.GFHeritages))for(const helmet of h.he
  for(const color of ['123456','654321','dabcfe'])assert(colors.has(color),helmet[0]+' missing recolorable part');signatures.add(hash.digest('hex'));ctx.GFDisposeFigure(g);variants++;
 }
 assert.equal(variants,18);assert.equal(signatures.size,18);
+// Every heritage keeps independently articulated limbs after mesh batching.
+for(const heritage of Object.keys(ctx.GFHeritages)){
+ const figure=new T.Group();ctx.GFGodAppearance(figure,T,null,null,{config:ctx.GFNormalizeHeritage({heritage}),weapon:true});
+ const rig=figure.userData.rig;assert(rig[-1].leg!==rig[1].leg);assert.equal(rig[1].hand.parent,rig[1].elbow);
+ const before=new T.Vector3();figure.updateMatrixWorld(true);rig[1].hand.getWorldPosition(before);
+ for(let i=0;i<12;i++)ctx.GFAnimateFigure(figure,.016,{moving:1});
+ assert(rig[-1].leg.rotation.x*rig[1].leg.rotation.x<0,'legs must alternate');
+ assert(rig[-1].arm.rotation.x*rig[-1].leg.rotation.x<0,'arm counters its leg');
+ for(let i=0;i<12;i++)ctx.GFAnimateFigure(figure,.016,{attack:.5});
+ figure.updateMatrixWorld(true);assert(before.distanceTo(rig[1].hand.getWorldPosition(new T.Vector3()))>.2,'attack must move hand');
+ assert(rig[1].hand.children.some(o=>o.name.startsWith('heritage-weapon')),'weapon follows hand');
+ for(let i=0;i<80;i++)ctx.GFAnimateFigure(figure,.016,{});
+ assert(Math.abs(rig[1].leg.rotation.x)<.001,'idle restores legs');ctx.GFDisposeFigure(figure);
+}
 const rules=ctx.GFWorldRules;assert.equal(rules.bridges.length,7);for(const b of rules.bridges){assert.equal(rules.bridgeHeight(0),rules.bridgeHeight(1));assert(rules.surfaceHeight(b.x,b.z)>1.7);}
 assert.equal(rules.surfaceHeight(0,-48),4.32);assert.equal(rules.surfaceHeight(0,692),4.32);for(let z=-34;z<-18;z++)assert(rules.surfaceHeight(0,z)>=rules.surfaceHeight(0,z+1));
 const from={x:0,z:10},to={x:0,z:26};assert.equal(rules.leapPoint(from,to,0).y,0);assert.equal(rules.leapPoint(from,to,1).y,0);assert.equal(rules.leapPoint(from,to,.5).y,4.4);

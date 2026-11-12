@@ -100,6 +100,12 @@
   const figure=new T.Group();figure.name='heritage-body';root.add(figure);
   const female=c.sex==='Female',heavy=c.body==='Heavyset',muscle=c.body==='Muscular';const breadth=heavy?1.16:muscle?1.08:female?.94:1;figure.scale.x=breadth;
   const {mesh,ell,box,cyl,line,shell}=helpers(T,figure);
+  const joints=[];const rigs={};
+  function joint(name,x,y,z,parent=figure){const g=new T.Group();g.name=name;g.position.set(x,y,z);parent.add(g);joints.push(g);return g}
+  for(const side of [-1,1]){const leg=joint('hip-'+side,side*.18,1.46,0),knee=joint('knee-'+side,side*.015,-.70,.025,leg),arm=joint('shoulder-'+side,side*.43,2.3,0),elbow=joint('elbow-'+side,side*.125,-.48,0,arm),hand=joint('hand-'+side,side*.045,-.46,.045,elbow);rigs[side]={leg,knee,arm,elbow,hand};}
+  // Move geometry into its anatomical pivot without changing the bind pose.
+  function attachParts(parts,target){figure.updateMatrixWorld(true);for(const o of parts)target.attach(o);}
+
   const skin=material(T,c.skin||'#bd8565','skin'),hair=material(T,c.hairColor||'#30241f','cloth'),metal=material(T,c.armorColor||h.metal,'metal'),trim=material(T,c.trimColor||h.color,'metal'),fabric=material(T,c.clothColor||h.cloth,'cloth'),leather=material(T,'#302a25','cloth'),dark=material(T,'#141a1d','cloth'),white=material(T,'#dad5c8','skin');
   const armorMat=type==='cloth'||type==='brigandine'?fabric:metal;
   // Human proportions: 3.15 units, approximately seven and a half heads tall.
@@ -116,6 +122,7 @@
   shell(0,2.92,-.018,.213,.21,.196,hair);
   // Anatomical limbs, fitted sleeves and gloves; no oversized floating pauldrons.
   for(const s of [-1,1]){
+   const start=figure.children.length;
    const thigh=ell(s*.18,1.13,0,.17,.43,.175,fabric);thigh.rotation.z=s*.035;
    ell(s*.195,.76,.035,.127,.13,.13,leather);ell(s*.2,.43,0,.115,.31,.12,type==='plate'?metal:leather);
    ell(s*.2,.095,.075,.13,.1,.23,leather);
@@ -125,6 +132,8 @@
    ell(s*.58,1.6,.025,.095,.22,.105,type==='plate'?metal:fabric);
    ell(s*.6,1.36,.045,.062,.077,.045,skin);for(let f=0;f<4;f++)ell(s*.6+(f-1.5)*.023,1.275-Math.sin(f/3*Math.PI)*.012,.055,.013,.055,.018,skin);ell(s*.66,1.34,.075,.025,.045,.025,skin);
    for(let k=0;k<3;k++)cyl(s*.58,1.45+k*.08,.025,.105,.105,.025,trim);
+   for(const o of figure.children.slice(start)){const y=o.position.y;attachParts([o],y<.9?rigs[s].knee:y<1.5&&Math.abs(o.position.x)<.4?rigs[s].leg:y<1.9?rigs[s].elbow:rigs[s].arm);}
+
   }
   // Cuirass: curved strips wrap the body, with a slim edge at every seam.
   const bands=(rows,top,bottom,mat)=>{for(let i=0;i<rows;i++){const y=bottom+(top-bottom)*i/(rows-1);const radius=y>2.1?.42:y>1.8?.36:.33;const o=cyl(0,y,0,radius,radius*.98,(top-bottom)/rows*.88,mat);o.scale.z=.66;const edge=cyl(0,y+.024,0,radius+.006,radius+.006,.012,trim);edge.scale.z=.66;}};
@@ -147,20 +156,45 @@
   const skirtRows=region==='japan'?5:region==='china'?3:1;
   for(let j=0;j<10;j++){const a=j*Math.PI/5;for(let row=0;row<skirtRows;row++){const r=.36+row*.02,y=1.35-row*.095;const o=box(Math.sin(a)*r,y,Math.cos(a)*r*.71,.2,skirtRows===1?.35:.1,.045,region==='greece'||region==='egypt'?fabric:armorMat);o.rotation.y=a;o.rotation.x=Math.cos(a)*-.1;}}
   for(const s of [-1,1]){
+   const shoulderStart=figure.children.length;
    if(region==='japan'||region==='china'){const broad=id==='oyoroi';for(let i=0;i<(broad?5:3);i++){const p=box(s*(.45+i*.012),2.4-i*.085,0,broad?.29:.22,.085,.35,metal);p.rotation.z=s*.12;for(let z=-.12;z<=.12;z+=.12)box(s*(.45+i*.012),2.42-i*.085,z,.04,.045,.025,fabric)}}
    else if(type==='plate'){for(let i=0;i<3;i++){const o=ell(s*(.42+i*.035),2.36-i*.07,0,.19,.1,.2,metal);o.rotation.z=s*-.18}}
    else if(region==='norse'&&id==='chieftain'){for(let j=0;j<13;j++)ell(s*(.25+j*.019),2.35+Math.sin(j)*.015,-.03,.1,.085,.12,material(T,j%2?'#716251':'#8a7b65','cloth'))}
+   attachParts(figure.children.slice(shoulderStart),rigs[s].arm);
+   const greaveStart=figure.children.length;
    if(['japan','greece','europe'].includes(region)){const o=ell(s*.2,.43,.075,.119,.26,.086,metal);line([[s*.2,.2,.15],[s*.2,.67,.15]],.01,trim)}
+   attachParts(figure.children.slice(greaveStart),rigs[s].knee);
   }
+  const shieldStart=figure.children.length;
   if(id==='hoplite'){const shield=cyl(-.64,1.65,.14,.41,.41,.055,metal);shield.rotation.x=Math.PI/2;ell(-.64,1.65,.18,.34,.34,.07,trim);for(let i=0;i<12;i++){const a=i*Math.PI/6;ell(-.64+Math.sin(a)*.37,1.65+Math.cos(a)*.37,.18,.017,.017,.012,trim)}}
+  attachParts(figure.children.slice(shieldStart),rigs[-1].elbow);
   if(region==='egypt'){for(let i=0;i<4;i++){const o=mesh(new T.TorusGeometry(.15+i*.039,.025,6,32,Math.PI*1.65),trim,0,2.4-i*.026,.03);o.rotation.x=Math.PI/2;}if(id==='pharaoh')box(0,2.1,.31,.07,.25,.025,trim)}
   if(region==='greece'||region==='norse'||(region==='europe'&&id==='hauberk')){
    const g=new T.PlaneGeometry(.65,1.55,10,14),p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i);p.setZ(i,Math.sin(x*36)*.035+(0.8-y)*.045)}g.computeVertexNormals();const m=fabric.clone();m.side=T.DoubleSide;const cape=mesh(g,m,-.08,1.47,-.26);cape.rotation.x=.08;
   }
   if(c.heritageHelmet!==false)figure.add(GFBuildHeritageHelmet(T,c));
   // Preview weapon and combat weapon are constructed by this same function.
-  if(options.weapon!==false){const w=GFBuildHeritageWeapon(T,c);w.position.set(.6,1.36,.06);w.rotation.z=-.13;figure.add(w)}
-  if(options.batch!==false)batchStatic(T,figure);root.userData.handX=.6*breadth;root.userData.heritageKey=GFLoadoutKey(c);root.userData.heritage=c.heritage;root.userData.armor=c.heritageArmor;root.userData.weapon=c.heritageWeapon;
+  if(options.weapon!==false){const w=GFBuildHeritageWeapon(T,c);w.position.set(.6,1.36,.06);w.rotation.z=-.13;figure.add(w);attachParts([w],rigs[1].hand)}
+  if(options.batch!==false){
+   // Batch each rigid segment independently; never flatten the joint hierarchy.
+   for(const group of [...joints].reverse().concat(figure)){const children=group.children.filter(o=>!o.isMesh);children.forEach(o=>group.remove(o));batchStatic(T,group);children.forEach(o=>group.add(o));}
+  }
+  root.userData.rig=rigs;root.userData.gait=0;
+root.userData.handX=.6*breadth;root.userData.heritageKey=GFLoadoutKey(c);root.userData.heritage=c.heritage;root.userData.armor=c.heritageArmor;root.userData.weapon=c.heritageWeapon;
   return root;
+ };
+window.GFAnimateFigure=function(root,dt,{moving=0,backward=false,attack=0,airborne=false}={}){
+  const rig=root?.userData.rig;if(!rig)return;
+  root.userData.gait=(root.userData.gait||0)+dt*10*Math.min(1,Math.abs(moving));
+  const phase=root.userData.gait,blend=1-Math.exp(-dt*18),amount=Math.min(1,Math.abs(moving));
+  for(const side of [-1,1]){const j=rig[side],stride=Math.sin(phase+(side===1?Math.PI:0))*amount*(backward?-1:1);
+   const hip=airborne?-.55:stride*.6,knee=airborne?.9:Math.max(0,-stride)*.85;
+   j.leg.rotation.x+=(hip-j.leg.rotation.x)*blend;j.knee.rotation.x+=(knee-j.knee.rotation.x)*blend;
+   let arm=-stride*.38,elbow=-.12-Math.abs(stride)*.18;
+   if(airborne){arm=-.6;elbow=-.5;}
+   if(attack>0&&side===1){arm=-Math.sin(attack*Math.PI)*1.45;elbow=-.3-Math.sin(attack*Math.PI)*.65;}
+   j.arm.rotation.x+=(arm-j.arm.rotation.x)*blend;j.elbow.rotation.x+=(elbow-j.elbow.rotation.x)*blend;
+   j.arm.rotation.z=side===1&&attack>0?-Math.sin(attack*Math.PI)*.35:0;
+  }
  };
 })();
