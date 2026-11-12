@@ -3,3 +3,7 @@
 .gf-social header{position:static!important;inset:auto!important;width:auto!important;transform:none!important;background:none!important;padding:0!important}.gf-social h2{position:static!important}
 
 #account-profile-button{position:absolute;top:3%;left:7%;z-index:200;background:#153f4b;color:#f3e4b6;border:1px solid #ba9e61;border-radius:8px;padding:10px 16px;min-height:44px;cursor:pointer}
+
+#gf36-modal.auth-gate{background:linear-gradient(115deg,#08151bf5,#142731f5),url('godforged-home-screen.jpg') center/cover;z-index:20000}#gf36-modal.auth-gate .gf-social{max-width:650px;border:2px solid #c6a46a;padding:clamp(18px,4vw,36px)}#social-create,#social-login{width:100%;background:linear-gradient(120deg,#946232,#493723);font-weight:800}#social-heading{overflow-wrap:anywhere}#social-auth input{min-height:46px}#social-auth h3{color:#f1d292}
+
+#ultimate{position:absolute;right:0;bottom:90px;width:65px!important;height:65px!important;border:2px solid #ffdc88!important;background:radial-gradient(#b37932,#39233b)!important;font:800 16px Georgia!important;box-shadow:0 0 18px #e9ae5b77}.ultimate-info{grid-column:1/-1;color:#f3d59a;border:1px solid #ae884d;padding:12px;background:#241f29}#home .live-profile{width:23%;height:15%;}#home .live-profile b{font-size:clamp(11px,1.5vw,22px)}@media(max-height:500px){#ultimate{bottom:73px;width:51px!important;height:51px!important}}

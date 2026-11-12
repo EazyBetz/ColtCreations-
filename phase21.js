@@ -515,6 +515,7 @@ const GF21 = (() => {
   if(groups){window.gf43HudRegion=hudKey;for(let i=0;i<3;i++){const selected=groups[i].find(a=>a[0]===c['ability'+(i+1)])||groups[i][0];const button=$('s'+(i+1));if(button){button.dataset.label=selected[0];button.title=selected[0]+' — '+selected[1];button.setAttribute('aria-label',button.title);button.dataset.abilityName=selected[0]}}}
  }
  $('hp').style.width=(Math.max(0,hp)/maxHp*100)+'%';$('combo-indicator').textContent=hp<=0?'RESPAWN '+Math.max(0,Math.ceil((respawnAt-time)/1000))+'s':leap?'SKY LEAP':strike?'COMBO '+strike+' / 3':'ATTACK · 3-HIT COMBO';
+ const ult=$('ultimate'),ultData=window.GFUltimates[window.gfGetConfig().heritage||'japan'],ultLeft=Math.max(0,(ultimateReady-time)/1000);ult.textContent=ultLeft>0?Math.ceil(ultLeft):'ULT';ult.dataset.label=ultData.name;ult.setAttribute('aria-label',ultData.name+' · '+(ultLeft>0?Math.ceil(ultLeft)+' seconds':'ready'));ult.style.opacity=ultLeft>0?'.5':'1';
  const ub=$('s4'),ul=Math.max(0,(utilityCooldown-time)/1000);ub.textContent=ul>0?Math.ceil(ul):'↟';ub.dataset.label=window.gfGetConfig?.().ability4||'Wind Dash';ub.setAttribute('aria-label',ub.dataset.label);
  if(baseHud){let bossHud=$('gf45BossHP');if(!bossHud){bossHud=document.createElement('span');bossHud.id='gf45BossHP';bossHud.style.cssText='background:#42191cde;border:1px solid #e98e54;border-radius:8px;padding:7px 10px;color:#ffe2bd';baseHud.append(bossHud)}
  const enemyBoss=baseStructures.find(t=>!t.friendly);bossHud.textContent=enemyBoss?.alive?'TITAN '+Math.max(0,Math.ceil(enemyBoss.hp))+'/'+enemyBoss.max:'TITAN DEFEATED';
@@ -525,9 +526,18 @@ const GF21 = (() => {
  // deal more damage than lane minions, and respawn after defeat.
  function makeDemonDogs(){
   const dark=material('#24252c'),hide=material('#43343a'),fang=material('#e8d6c4'),glow=new T.MeshStandardMaterial({color:'#f05e55',emissive:'#d51e23',emissiveIntensity:2});
-  for(const side of [-1,1])for(const z of GFWorldRules.dogs.campZ){
-   const x=side*46,radius=18;
+  for(const camp of GFWorldRules.dogs.camps){
+   const {x,z}=camp,radius=14;
    const approach=mesh(new T.PlaneGeometry(94,13),material('#526748'),x,.045,z);approach.rotation.x=-Math.PI/2;
+   const stone=surface('masonry','#c9c5ae'),bronze=material('#a88a50');
+   for(let step=0;step<6;step++)mesh(new T.CylinderGeometry(14-step*.8,14-step*.8,.25,48),stone,x,.235+step*.25,z);
+   // A Roman aedicule and water-spout tower beyond the guardian's patrol circle.
+   const towerZ=z+17;mesh(new T.BoxGeometry(10,.7,7),stone,x,.45,towerZ);
+   for(const side of [-1,1]){mesh(new T.CylinderGeometry(.6,.8,8,16),stone,x+side*3,4.7,towerZ);mesh(new T.BoxGeometry(2,.5,2),bronze,x+side*3,8.8,towerZ);}
+   mesh(new T.BoxGeometry(9,1,3),stone,x,9.5,towerZ);mesh(new T.ConeGeometry(6,2.5,4),stone,x,11.1,towerZ).rotation.y=Math.PI/4;
+   mesh(new T.BoxGeometry(5,7,1),stone,x,4,towerZ+1);mesh(new T.SphereGeometry(.7,16,12),bronze,x,5.5,towerZ-.1);
+   mesh(new T.CylinderGeometry(.13,.24,4.5,10),new T.MeshStandardMaterial({color:'#75cde1',transparent:true,opacity:.6,roughness:.14}),x,3,towerZ-.8);
+   mesh(new T.CylinderGeometry(2.5,2.8,.65,32),stone,x,.7,towerZ-1);mesh(new T.CylinderGeometry(2.25,2.25,.08,32),material('#58bed4'),x,1.06,towerZ-1);
    const zone=mesh(new T.CircleGeometry(radius,40),new T.MeshStandardMaterial({color:'#23432b',transparent:true,opacity:.76,side:T.DoubleSide}),x,.06,z);zone.rotation.x=-Math.PI/2;
    const rim=mesh(new T.TorusGeometry(radius,.32,6,64),material('#8e6b48'),x,.15,z);rim.rotation.x=Math.PI/2;
    for(let i=0;i<28;i++){const a=i*Math.PI*2/28,rr=radius-2.3;const grass=mesh(new T.ConeGeometry(.4,1.7,4),material(i%2?'#385e39':'#4b7744'),x+Math.cos(a)*rr,.8,z+Math.sin(a)*rr);grass.rotation.z=Math.sin(a)*.24}
@@ -548,7 +558,7 @@ const GF21 = (() => {
     const collar=mesh(new T.TorusGeometry(.48,.1,8,32),armor,0,2.31,1.1,root);collar.rotation.x=.45;
     const tailCurve=new T.CatmullRomCurve3([new T.Vector3(0,1.6,-1.3),new T.Vector3(0,1.45,-2),new T.Vector3(0,2,-2.6),new T.Vector3(.2,2.35,-2.7)]);mesh(new T.TubeGeometry(tailCurve,16,.12,8,false),coat,0,0,0,root);
     root.userData.guardianLegs=legs;
-    const dx=Math.cos(i*Math.PI/2)*6,dz=Math.sin(i*Math.PI/2)*6;root.position.set(x+dx,0,z+dz);
+    const dx=0,dz=0;root.position.set(x,floorAt(x,z),z);
     demonDogs.push({root,homeX:x,homeZ:z,x:x+dx,z:z+dz,radius:radius-2.6,hp:alpha?GFWorldRules.dogs.alphaHealth:GFWorldRules.dogs.health,max:alpha?GFWorldRules.dogs.alphaHealth:GFWorldRules.dogs.health,damage:alpha?GFWorldRules.dogs.alphaDamage:GFWorldRules.dogs.damage,alpha,alive:true,respawnAt:0,attackClock:.6,attackPose:0});
    }
   }
@@ -572,7 +582,7 @@ const GF21 = (() => {
     else if(!t.player&&t.alive){t.hp=Math.max(0,t.hp-dog.damage);if(!t.hp){t.alive=false;t.root.visible=false;t.respawnAt=now+11000}}
    }}
    dog.attackPose=Math.max(0,dog.attackPose-dt);for(const [i,leg] of (dog.root.userData.guardianLegs||[]).entries())leg.rotation.x=distance>2.8&&!dog.pendingBite?Math.sin(now*.008+(i===0||i===3?0:Math.PI))*.42:0;
-   dog.root.position.set(dog.x,Math.sin(now*.009+dog.homeZ)*.07+(dog.attackPose?Math.sin(dog.attackPose*9)*.35:0),dog.z);
+   dog.root.position.set(dog.x,floorAt(dog.x,dog.z)+Math.sin(now*.009+dog.homeZ)*.07+(dog.attackPose?Math.sin(dog.attackPose*9)*.35:0),dog.z);
    if(distance>.01)dog.root.rotation.y=Math.atan2(tx-dog.x,tz-dog.z);
   }
  }
@@ -833,7 +843,7 @@ const GF21 = (() => {
   for(const d of demonDogs){d.alive=true;d.hp=d.max;d.x=d.homeX;d.z=d.homeZ;d.root.visible=true;d.pendingBite=null;d.attackClock=.7;d.respawnAt=0;}
   for(const b of buffs){b.alive=true;b.respawn=0;b.orb.visible=true;}
   hp=maxHp=350;gold=500;xp=0;level=1;kills=0;ownedItems={};powerBonus=armorBonus=0;recallUntil=respawnAt=utilityCooldown=shieldUntil=speedBuffUntil=attackReadyAt=0;window.gfStealthUntil=0;
-  abilityReady=[0,0,0];matchEnded=false;active=true;matchElapsed=lastWave=gameTime=0;lastCleanup=0;leap=null;jumpHeight=0;strike=0;yaw=0;pitch=.16;position={x:laneX(0,-48),z:-48};prev=0;shopPanel.hidden=true;window.gf43HudRegion='';updateShop();combatForge?.tick(100);
+  ultimateReady=0;ultimateStrikes=[];abilityReady=[0,0,0];matchEnded=false;active=true;matchElapsed=lastWave=gameTime=0;lastCleanup=0;leap=null;jumpHeight=0;strike=0;yaw=0;pitch=.16;position={x:laneX(0,-48),z:-48};prev=0;shopPanel.hidden=true;window.gf43HudRegion='';updateShop();combatForge?.tick(100);
  }
  function drawMinimap(){
   const c=$('mini').getContext('2d'),w=105,h=105,px=x=>52+x*.43,pz=z=>101-(z+70)*96/784;c.clearRect(0,0,w,h);c.fillStyle='#10221d';c.fillRect(0,0,w,h);c.strokeStyle='#928878';c.lineWidth=2;
@@ -881,7 +891,30 @@ const GF21 = (() => {
   }
  }
  function spellPart(geometry,mat,x,y,z,group){return mesh(geometry,mat,x,y,z,group)}
- let abilityReady=[0,0,0],summons=[];
+ let abilityReady=[0,0,0],summons=[],ultimateReady=0,ultimateStrikes=[];
+ function ultimate(){
+  if(coop&&!coop.host){netSend({type:'action',action:'ultimate'});return;}
+  if(!active||matchEnded||leap||hp<=0||shopPanel&&!shopPanel.hidden)return;
+  const now=performance.now(),u=window.GFUltimates[window.gfGetConfig().heritage||'japan'];
+  if(now<ultimateReady){$('status').textContent=u.name+' · '+Math.ceil((ultimateReady-now)/1000)+'s';return;}
+  ultimateReady=now+u.cooldown;recallUntil=0;attackTime=.8;weaponAttackAge=.01;
+  const tx=position.x+Math.sin(yaw)*10,tz=position.z+Math.cos(yaw)*10;
+  ultimateStrikes.push({x:tx,z:tz,at:now+650,u,damage:u.damage+powerBonus,owner:hero===remoteBot?.root?remoteBot:null});
+  combatForge?.ability(u.name,position.x,position.z,yaw,tx,tz);
+  if(coop?.host)netSend({type:'effect',name:u.name,x:position.x,z:position.z,yaw,tx,tz});
+  $('status').textContent=u.name.toUpperCase()+' · ULTIMATE CHARGING';
+ }
+ function tickUltimates(now){
+  for(const strike of ultimateStrikes){if(strike.done||now<strike.at)continue;strike.done=true;if(strike.owner?!strike.owner.alive:hp<=0)continue;let hits=0;const inRange=o=>o.alive&&Math.hypot(o.x-strike.x,o.z-strike.z)<strike.u.radius;
+   for(const m of mobs.filter(m=>!m.friendly&&m.kind!=='tower'&&inRange(m))){m.hp-=strike.damage;hits++;if(m.hp<=0)finishMob(m,true);}
+   for(const b of bots.filter(b=>!b.friendly&&inRange(b))){b.hp-=strike.damage;hits++;if(b.hp<=0){b.alive=false;b.root.visible=false;b.respawnAt=now+11000;gold+=85;kills++;}}
+   for(const d of demonDogs.filter(inRange)){damageDemonDog(d.x,d.z,strike.damage,.1);hits++;}
+   for(const t of baseStructures.filter(t=>!t.friendly&&coreExposed(false)&&inRange(t))){t.hp-=strike.damage;hits++;endIfTitanDestroyed(t);}
+   $('status').textContent=strike.u.name.toUpperCase()+' · '+hits+' HITS · '+strike.damage+' DAMAGE';
+  }
+  ultimateStrikes=ultimateStrikes.filter(s=>!s.done);
+ }
+
  function cast(which){if(coop&&!coop.host){netSend({type:"action",slot:which});return;}
   if(!active||matchEnded||leap||hp<=0||shopPanel&&!shopPanel.hidden)return;const now=performance.now();if(now<abilityReady[which]){$('status').textContent='Power cooling down · '+Math.ceil((abilityReady[which]-now)/1000)+'s';return}
   const cfg=window.gfGetConfig?.()||{},regional=window.GFRegionalAbilities?.[cfg.heritage||'japan'],selected=regional?.[which]?.some(x=>x[0]===cfg['ability'+(which+1)])?cfg['ability'+(which+1)]:regional?.[which]?.[0]?.[0],name=selected||cfg['ability'+(which+1)]||'Cinder Fan';
@@ -925,7 +958,7 @@ const GF21 = (() => {
  if(!coop||coop.host)tickLeap(dt);refreshHeritage();window.GFAnimateFigure(hero,dt,{moving:Math.hypot(position.x-oldX,position.z-oldZ)/Math.max(.001,speed),backward:forward<0,attack:weaponAttackAge<(activeWeapon.startsWith('War Axe')?.63:activeWeapon.startsWith('Spear')?.43:.48)?Math.max(.001,weaponAttackAge/(activeWeapon.startsWith('War Axe')?.63:activeWeapon.startsWith('Spear')?.43:.48)):0,airborne:jumpHeight>.1});modelRoot.position.set(position.x,floorAt(position.x,position.z)+jumpHeight+Math.sin(time*.009)*.025,position.z);modelRoot.visible=hp>0;modelRoot.rotation.y=yaw;hero.rotation.z=0;animatePhysicalWeapon(dt);attackTime=Math.max(0,attackTime-dt);hero.rotation.y=attackTime?Math.sin(attackTime*13)*.26:0;
  let back=7,dirX=Math.sin(yaw),dirZ=Math.cos(yaw);const eyeHeight=floorAt(position.x,position.z)+jumpHeight*.55;camera.position.set(position.x-dirX*back,eyeHeight+4.7+pitch*5,position.z-dirZ*back);camera.lookAt(position.x+dirX*4,eyeHeight+2.2+pitch*3,position.z+dirZ*4);
  if(sunLight){sunLight.position.set(position.x-20,42,position.z+24);sunLight.target.position.set(position.x,0,position.z);}
- if(!coop||coop.host)updateBattleSystems(dt,time);coopFrame(dt,time);
+ if(!coop||coop.host){updateBattleSystems(dt,time);tickUltimates(time);}coopFrame(dt,time);
  combatForge?.tick(dt);
  tickSanctuaries(dt,time);witchwood?.tick(time);drawMinimap();updateHealthBars();
  for(let i=0;i<3;i++){const b=$('s'+(i+1)),left=Math.max(0,(abilityReady[i]-time)/1000);b.textContent=left>0?Math.ceil(left):['Ⅰ','Ⅱ','Ⅲ'][i];b.style.opacity=left>0?'.55':'1';b.dataset.cooling=left>0?'true':'false';}
@@ -938,9 +971,9 @@ const GF21 = (() => {
  const netSend=data=>window.GFOnline?.send(data);
  function remoteContext(fn){
   if(!remoteBot||!remoteBot.alive)return;
-  const saved={position,yaw,hp,maxHp,modelRoot,hero,leap,jumpHeight,utilityCooldown,abilityReady,attackReadyAt,combatForge,attackTime,strike,shieldUntil,speedBuffUntil},getConfig=window.gfGetConfig;
-  position={x:remoteBot.x,z:remoteBot.z};yaw=remoteInput.yaw;hp=remoteBot.hp;maxHp=remoteBot.max;modelRoot=remoteBot.root;hero=remoteBot.root;leap=remoteBot.leap||null;jumpHeight=remoteBot.jumpHeight||0;utilityCooldown=remoteBot.utilityCooldown||0;abilityReady=remoteBot.abilityReady||[0,0,0];attackReadyAt=remoteBot.attackReadyAt||0;shieldUntil=remoteBot.shieldUntil||0;speedBuffUntil=remoteBot.speedBuffUntil||0;combatForge=remoteBot.combat;window.gfGetConfig=()=>remoteBot.config||getConfig();
-  try{fn();remoteBot.x=position.x;remoteBot.z=position.z;remoteBot.hp=hp;remoteBot.leap=leap;remoteBot.jumpHeight=jumpHeight;remoteBot.utilityCooldown=utilityCooldown;remoteBot.abilityReady=abilityReady;remoteBot.attackReadyAt=attackReadyAt;remoteBot.shieldUntil=shieldUntil;remoteBot.speedBuffUntil=speedBuffUntil;}finally{({position,yaw,hp,maxHp,modelRoot,hero,leap,jumpHeight,utilityCooldown,abilityReady,attackReadyAt,combatForge,attackTime,strike,shieldUntil,speedBuffUntil}=saved);window.gfGetConfig=getConfig;}
+  const saved={position,yaw,hp,maxHp,modelRoot,hero,leap,jumpHeight,utilityCooldown,abilityReady,ultimateReady,attackReadyAt,combatForge,attackTime,strike,shieldUntil,speedBuffUntil},getConfig=window.gfGetConfig;
+  position={x:remoteBot.x,z:remoteBot.z};yaw=remoteInput.yaw;hp=remoteBot.hp;maxHp=remoteBot.max;modelRoot=remoteBot.root;hero=remoteBot.root;leap=remoteBot.leap||null;jumpHeight=remoteBot.jumpHeight||0;utilityCooldown=remoteBot.utilityCooldown||0;ultimateReady=remoteBot.ultimateReady||0;abilityReady=remoteBot.abilityReady||[0,0,0];attackReadyAt=remoteBot.attackReadyAt||0;shieldUntil=remoteBot.shieldUntil||0;speedBuffUntil=remoteBot.speedBuffUntil||0;combatForge=remoteBot.combat;window.gfGetConfig=()=>remoteBot.config||getConfig();
+  try{fn();remoteBot.x=position.x;remoteBot.z=position.z;remoteBot.hp=hp;remoteBot.leap=leap;remoteBot.jumpHeight=jumpHeight;remoteBot.utilityCooldown=utilityCooldown;remoteBot.ultimateReady=ultimateReady;remoteBot.abilityReady=abilityReady;remoteBot.attackReadyAt=attackReadyAt;remoteBot.shieldUntil=shieldUntil;remoteBot.speedBuffUntil=speedBuffUntil;}finally{({position,yaw,hp,maxHp,modelRoot,hero,leap,jumpHeight,utilityCooldown,abilityReady,ultimateReady,attackReadyAt,combatForge,attackTime,strike,shieldUntil,speedBuffUntil}=saved);window.gfGetConfig=getConfig;}
  }
  function coopFrame(dt,time){if(!coop)return;
   if(coop.host&&remoteBot){
@@ -950,7 +983,7 @@ const GF21 = (() => {
   netAge+=dt;if(netAge<.1)return;netAge=0;
   if(!coop.host){if(!coop.helloAt||time-coop.helloAt>2000){coop.helloAt=time;netSend({type:'hello',config:window.gfGetConfig()})}const input=window.gf21Joy?.()||{x:0,y:0};let f=input.y,s=-input.x;if(battleKeys.has('w')||battleKeys.has('s'))f=(battleKeys.has('w')?1:0)-(battleKeys.has('s')?1:0);if(battleKeys.has('a')||battleKeys.has('d'))s=(battleKeys.has('a')?1:0)-(battleKeys.has('d')?1:0);netSend({type:'input',forward:f,strafe:s,yaw});return;}
   const serialize=e=>{e.netId??='n'+(++netSerial);return {id:e.netId,x:e.x,z:e.z,hp:e.hp,max:e.max,alive:e.alive,friendly:e.friendly,kind:e.kind,lane:e.lane,tier:e.tier,role:e.role,rotation:e.root.rotation.y,scale:e.root.scale.x}};
-  netSend({type:'world',mobs:mobs.map(serialize),bots:bots.map(serialize),dogs:demonDogs.map(serialize),bosses:baseStructures.map(serialize),host:{x:position.x,z:position.z,y:jumpHeight,yaw,hp,config:window.gfGetConfig()},guest:remoteBot?{x:remoteBot.x,z:remoteBot.z,y:remoteBot.jumpHeight||0,hp:remoteBot.hp,max:remoteBot.max}:null,time:matchElapsed,gold,level,ended:matchEnded,victory:!baseStructures.find(b=>!b.friendly)?.alive});
+  netSend({type:'world',mobs:mobs.map(serialize),bots:bots.map(serialize),dogs:demonDogs.map(serialize),bosses:baseStructures.map(serialize),host:{x:position.x,z:position.z,y:jumpHeight,yaw,hp,config:window.gfGetConfig()},guest:remoteBot?{x:remoteBot.x,z:remoteBot.z,y:remoteBot.jumpHeight||0,hp:remoteBot.hp,max:remoteBot.max,ultimateLeft:Math.max(0,(remoteBot.ultimateReady||0)-time)}:null,time:matchElapsed,gold,level,ended:matchEnded,victory:!baseStructures.find(b=>!b.friendly)?.alive});
  }
  function syncWorld(data){if(!coop||coop.host||!T||!data.guest)return;
   const finite=v=>Number.isFinite(v);if(!finite(data.guest.x)||!finite(data.guest.z))return;
@@ -962,24 +995,24 @@ const GF21 = (() => {
   if(remoteBot)remoteBot.root.visible=false;
   if(!coop.hostFigure){coop.hostFigure=new T.Group();window.GFGodAppearance(coop.hostFigure,T,mesh,material,{config:data.host.config,weapon:true});coop.hostFigure.scale.setScalar(1.2);scene.add(coop.hostFigure)}
   coop.hostFigure.visible=data.host.hp>0;coop.hostFigure.position.set(data.host.x,floorAt(data.host.x,data.host.z)+data.host.y,data.host.z);coop.hostFigure.rotation.y=data.host.yaw;
-  position.x=data.guest.x;position.z=data.guest.z;jumpHeight=data.guest.y;hp=data.guest.hp;maxHp=data.guest.max;gold=data.gold;level=data.level;matchElapsed=data.time;
+  position.x=data.guest.x;position.z=data.guest.z;jumpHeight=data.guest.y;hp=data.guest.hp;maxHp=data.guest.max;ultimateReady=performance.now()+(data.guest.ultimateLeft||0);gold=data.gold;level=data.level;matchElapsed=data.time;
   $('gf27HP').textContent='HP '+Math.ceil(hp)+'/'+maxHp;$('gf27Gold').textContent='TEAM '+gold+' GOLD';$('gf27Level').textContent='LV '+level;$('gf35Timer').textContent='CO-OP '+Math.floor(matchElapsed/60)+':'+String(Math.floor(matchElapsed%60)).padStart(2,'0');
   if(data.ended){$('status').textContent=data.victory?'VICTORY · ENEMY TITAN DEFEATED':'DEFEAT · YOUR TITAN HAS FALLEN';active=false;matchEnded=true;}
  }
  window.GFCoop={
-  async start(host){await init();if(!initialized){$('status').textContent='Co-op could not start: 3D rendering unavailable';return}resetMatch();coop={host};remoteBot=bots.find(b=>b.friendly);remoteBot.human=true;remoteBot.config=window.gfGetConfig();remoteBot.combat=window.GFCombatForge?.(T,scene,remoteBot.root);remoteBot.x=laneX(0,-48)+5;remoteBot.z=-48;remoteBot.hp=remoteBot.max=350;remoteBot.alive=true;remoteBot.abilityReady=[0,0,0];remoteBot.utilityCooldown=remoteBot.attackReadyAt=0;lastNetAt=performance.now();window.gfNewMatchRequested=false;window.gfNavigate?.('battle');active=true;if(!host)netSend({type:'hello',config:window.gfGetConfig()});$('status').textContent='PRIVATE CO-OP · '+(host?'HOST':'GUEST');},
+  async start(host){await init();if(!initialized){$('status').textContent='Co-op could not start: 3D rendering unavailable';return}resetMatch();coop={host};remoteBot=bots.find(b=>b.friendly);remoteBot.human=true;remoteBot.config=window.gfGetConfig();remoteBot.combat=window.GFCombatForge?.(T,scene,remoteBot.root);remoteBot.x=laneX(0,-48)+5;remoteBot.z=-48;remoteBot.hp=remoteBot.max=350;remoteBot.alive=true;remoteBot.abilityReady=[0,0,0];remoteBot.ultimateReady=remoteBot.utilityCooldown=remoteBot.attackReadyAt=0;lastNetAt=performance.now();window.gfNewMatchRequested=false;window.gfNavigate?.('battle');active=true;if(!host)netSend({type:'hello',config:window.gfGetConfig()});$('status').textContent='PRIVATE CO-OP · '+(host?'HOST':'GUEST');},
   stop(){if(coop?.hostFigure){scene.remove(coop.hostFigure);window.GFDisposeFigure(coop.hostFigure)}if(remoteBot){remoteBot.human=false;remoteBot.combat?.tick(100)}coop=null;remoteBot=null;if(initialized&&active){active=false;$('status').textContent='Party disconnected. Return home to start a new solo match.'}},
   receive(data){if(!coop)return;if(!coop.host){if(data.type==='world')syncWorld(data);else if(data.type==='effect'&&window.GFRegionalAbilityMeta?.[data.name]&&[data.x,data.z,data.yaw,data.tx,data.tz].every(Number.isFinite))combatForge?.ability(data.name,data.x,data.z,data.yaw,data.tx,data.tz);return}lastNetAt=performance.now();if(data.type==='hello'&&data.config&&remoteBot){const configKey=JSON.stringify(data.config);if(remoteBot.configKey===configKey)return;remoteBot.configKey=configKey;remoteBot.config=window.GFNormalizeHeritage(data.config);window.GFGodAppearance(remoteBot.root,T,mesh,material,{config:remoteBot.config,weapon:true});}
    if(data.type==='input'&&[data.forward,data.strafe,data.yaw].every(Number.isFinite)){const length=Math.max(1,Math.hypot(data.forward,data.strafe));remoteInput={forward:data.forward/length,strafe:data.strafe/length,yaw:data.yaw};}
-   if(data.type==='action'&&remoteBot?.alive){remoteContext(()=>{if(data.action==='attack')hit();else if(data.action==='utility')utility();else if(Number.isInteger(data.slot)&&data.slot>=0&&data.slot<3)cast(data.slot);});}
+   if(data.type==='action'&&remoteBot?.alive){remoteContext(()=>{if(data.action==='attack')hit();else if(data.action==='utility')utility();else if(data.action==='ultimate')ultimate();else if(Number.isInteger(data.slot)&&data.slot>=0&&data.slot<3)cast(data.slot);});}
   }
  };
 
  const battleKeys=new Set();
- window.addEventListener('keydown',e=>{if(!active||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();battleKeys.add(k);if([' ','q','e','r','f','arrowleft','arrowright'].includes(k))e.preventDefault();if(e.repeat)return;if(k===' ')hit();if(k==='q')cast(0);if(k==='e')cast(1);if(k==='r')cast(2);if(k==='f')utility();});
+ window.addEventListener('keydown',e=>{if(!active||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();battleKeys.add(k);if([' ','q','e','r','f','g','arrowleft','arrowright'].includes(k))e.preventDefault();if(e.repeat)return;if(k===' ')hit();if(k==='q')cast(0);if(k==='e')cast(1);if(k==='r')cast(2);if(k==='f')utility();if(k==='g')ultimate();});
  window.addEventListener('keyup',e=>battleKeys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>battleKeys.clear());
  canvas.addEventListener('pointerdown',e=>{look={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(!look||look.id!==e.pointerId)return;let dx=e.clientX-look.x,dy=e.clientY-look.y;yaw-=dx*.006;pitch=Math.max(-.5,Math.min(.5,pitch-dy*.003));look.x=e.clientX;look.y=e.clientY});canvas.addEventListener('pointerup',()=>look=null);canvas.addEventListener('pointercancel',()=>look=null);canvas.addEventListener('lostpointercapture',()=>look=null);
- for(let [id,fn] of [['attack',hit],['s1',()=>cast(0)],['s2',()=>cast(1)],['s3',()=>cast(2)],['s4',utility]])$(id).addEventListener('pointerdown',e=>{if(!active)return;e.stopImmediatePropagation();e.preventDefault();fn()},true);
+ for(let [id,fn] of [['attack',hit],['s1',()=>cast(0)],['s2',()=>cast(1)],['s3',()=>cast(2)],['s4',utility],['ultimate',ultimate]])$(id).addEventListener('pointerdown',e=>{if(!active)return;e.stopImmediatePropagation();e.preventDefault();fn()},true);
  const observer=new MutationObserver(()=>{let show=$('battle').classList.contains('active');if(show){canvas.style.display='block';active=true;window.gf21Active=true;window.playing=false;if(initialized&&(window.gfNewMatchRequested||matchEnded))resetMatch();window.gfNewMatchRequested=false;prev=0;init()}else{active=false;canvas.style.display='none'}});observer.observe($('battle'),{attributes:true,attributeFilter:['class']});
  return {getGod,fitGLB,applyStyle};
 })();

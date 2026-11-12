@@ -208,6 +208,7 @@
       register(g,name==='Forge Turret'?.95:.78,{expand:name==='Dread Howl'?.35:.13});
     }
     function regionalAbility(name,meta,x,z,yaw,tx,tz){
+      const art=window.GFSpellArt?.(T,scene,name,meta,x,z,yaw,tx,tz);if(art){register(art.group,art.duration,{animate:art.animate});return;}
       const g=new T.Group();scene.add(g);g.position.set(x,window.GFWorldRules?.surfaceHeight(x,z)||0,z);g.rotation.y=yaw;
       const palettes={japan:'#f2a1ac',china:'#f5b24d',norse:'#a5deef',greece:'#f9d48c',egypt:'#e6c06a',europe:'#9ebdde'};
       const fire=/fire|flame|inferno|dragon|phoenix|solar|sunbeam/i.test(name),ice=/frost/i.test(name),lightning=/bolt|thunder|zeus|raijin|storm/i.test(name);
@@ -248,6 +249,7 @@
         const p=Math.min(1,Math.max(0,1-e.life/e.duration));
         const opacity=p<.58?1:Math.max(0,(1-p)/.42);
         for(const m of e.materials)m.m.opacity=m.opacity*opacity;
+        if(e.opts.animate)e.opts.animate(p,dt);
         if(e.opts.flecks)for(const n of e.opts.flecks){n.position.y+=dt*.7;n.rotation.y+=dt*2;}
         if(e.opts.reveal){
           e.group.traverse(function (n) {
