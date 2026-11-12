@@ -7,9 +7,9 @@ window.GFWorldRules={
  dogs:{campZ:[215,405,555],perCamp:4,health:420,alphaHealth:720,damage:28,alphaDamage:45,respawn:45000}
 };
 window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
- const wood=surface('timber','#766957',2),brick=surface('masonry','#65554a',3),slate=surface('slate','#353943',2);
+ const wood=surface('masonry','#c6c0a5',2),brick=surface('masonry','#b8b59d',3),slate=surface('slate','#ded5ba',2);
  const active=[];
- const water=new T.MeshPhysicalMaterial({color:'#2381aa',metalness:.22,roughness:.19,clearcoat:1,clearcoatRoughness:.12,transparent:true,opacity:.87,side:T.DoubleSide});
+ const water=new T.MeshPhysicalMaterial({color:'#22b8bd',metalness:.22,roughness:.19,clearcoat:1,clearcoatRoughness:.12,transparent:true,opacity:.87,side:T.DoubleSide});
  const rippleData=new Uint8Array(64*64*4);for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4,v=128+45*Math.sin(x*.6+y*.3)+25*Math.sin(y*.9-x*.2);rippleData[i]=rippleData[i+1]=rippleData[i+2]=v;rippleData[i+3]=255;}
  const ripples=new T.DataTexture(rippleData,64,64);ripples.wrapS=ripples.wrapT=T.RepeatWrapping;ripples.repeat.set(3,55);ripples.needsUpdate=true;water.bumpMap=ripples;water.bumpScale=.14;
  function stream(points,width){
@@ -40,34 +40,7 @@ window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
   mesh(new T.BoxGeometry(1.8,4.2,36),brick,0,2.1,0,g);mesh(new T.BoxGeometry(2.2,.35,36.8),slate,0,4.3,0,g);
   for(let dz=-18;dz<=18;dz+=6){mesh(new T.BoxGeometry(2.4,5,2),brick,0,2.5,dz,g);mesh(new T.BoxGeometry(2.7,.3,2.3),slate,0,5.12,dz,g);}
  }
- const green=new T.MeshStandardMaterial({color:'#b8ed87',emissive:'#58963c',emissiveIntensity:1.6}),coal=material('#191b1a'),robe=material('#282136'),skin=material('#869373');
- for(const side of [-1,1])for(const z of [165,275,465]){
-  const g=new T.Group();g.position.set(side*53,0,z);g.rotation.y=side>0?-Math.PI/2:Math.PI/2;scene.add(g);
-  const walls=surface('plaster','#5e6154',2);mesh(new T.BoxGeometry(8,6,7),walls,0,3,0,g);
-  for(const x of [-4,0,4])mesh(new T.BoxGeometry(.35,6.4,.35),wood,x,3.2,3.6,g);
-  for(const sign of [-1,1]){const roof=mesh(new T.BoxGeometry(5.6,.4,9),slate,sign*2,7,0,g);roof.rotation.z=-sign*.6;}
-  mesh(new T.BoxGeometry(1.2,4,1.2),brick,-2.2,7.8,-1.5,g);
-  mesh(new T.BoxGeometry(2.1,3.8,.15),wood,0,1.9,3.6,g);
-  for(const x of [-2.7,2.7]){mesh(new T.BoxGeometry(1.2,1.5,.12),green,x,3.4,3.6,g);mesh(new T.BoxGeometry(.11,1.55,.2),wood,x,3.4,3.7,g);mesh(new T.BoxGeometry(1.3,.1,.2),wood,x,3.4,3.7,g);}
-  // Iron cauldron with bubbling liquid, smoke, firewood, and a stirring witch.
-  const pot=mesh(new T.SphereGeometry(1.2,16,10,0,Math.PI*2,.65,Math.PI-.65),coal,2.8,1.2,7,g);pot.rotation.x=Math.PI;
-  const rim=mesh(new T.TorusGeometry(1.02,.13,8,24),coal,2.8,1.85,7,g);rim.rotation.x=Math.PI/2;
-  const brew=mesh(new T.CircleGeometry(.92,24),green,2.8,1.8,7,g);brew.rotation.x=-Math.PI/2;
-  for(let i=0;i<5;i++){const log=mesh(new T.CylinderGeometry(.15,.2,2.5,7),wood,2.8,.2,7,g);log.rotation.z=Math.PI/2;log.rotation.y=i*Math.PI/5;}
-  const witch=new T.Group();witch.position.set(0,0,7.3);g.add(witch);
-  mesh(new T.ConeGeometry(.7,2.5,12),robe,0,1.25,0,witch);mesh(new T.SphereGeometry(.36,12,8),skin,0,2.7,0,witch);
-  const hat=mesh(new T.ConeGeometry(.59,1.4,12),robe,0,3.6,0,witch);hat.rotation.z=-.2;
-  mesh(new T.CylinderGeometry(.82,.82,.07,24),robe,0,3.02,0,witch);
-  const arm=mesh(new T.CylinderGeometry(.12,.16,1.1,8),robe,.6,2,.2,witch);arm.rotation.z=1.1;
-  const spoon=mesh(new T.CylinderGeometry(.045,.055,2.2,6),wood,1.9,2.5,7,g);spoon.rotation.z=.5;
-  const smokeMat=new T.MeshBasicMaterial({color:'#a9c8b5',transparent:true,opacity:.16,depthWrite:false});const vapors=[];
-  for(let i=0;i<7;i++){const puff=mesh(new T.SphereGeometry(.3,7,6),smokeMat,2.8,2+i*.4,7,g);vapors.push(puff);}
-  for(let i=0;i<6;i++){const a=i*2.4;const stem=mesh(new T.CylinderGeometry(.07,.1,.5,6),material('#b7b5a0'),Math.sin(a)*5,.3,Math.cos(a)*5+8,g);mesh(new T.SphereGeometry(.32,8,6,0,Math.PI*2,0,Math.PI/2),material(i%2?'#86504c':'#c0a28a'),stem.position.x,.58,stem.position.z,g);}
-  for(let i=0;i<3;i++){const grave=mesh(new T.BoxGeometry(.9,1.6,.3),brick,-5-i*1.5,.75,4+i*1.3,g);grave.rotation.z=(i-1)*.15;mesh(new T.BoxGeometry(.5,.07,.08),slate,-5-i*1.5,1,4+i*1.3+.2,g);}
-  witch.userData.dynamic=true;spoon.userData.dynamic=true;for(const puff of vapors)puff.userData.dynamic=true;
-  active.push({witch,spoon,vapors,brew});
- }
- return {tick(time){ripples.offset.y=-time*.000018;ripples.offset.x=Math.sin(time*.0001)*.12;for(const a of active){a.witch.rotation.z=Math.sin(time*.0012)*.035;a.spoon.rotation.x=Math.sin(time*.0018)*.22;for(let i=0;i<a.vapors.length;i++){const p=(time*.00018+i/7)%1;a.vapors[i].position.set(2.8+Math.sin(p*7)*.3,2+p*3.2,7+Math.cos(p*5)*.2);a.vapors[i].scale.setScalar(.35+p*1.7);}}}};
+ return {tick(time){ripples.offset.y=-time*.000018;ripples.offset.x=Math.sin(time*.0001)*.12;}};
 };
 // Batch repeated static props per area; animated actors and water remain independent.
 window.GFOptimizeScenery=function(T,scene){

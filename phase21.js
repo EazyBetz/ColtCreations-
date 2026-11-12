@@ -245,13 +245,13 @@ const GF21 = (() => {
 
  function laneX(l,z){return l*95+Math.sin(z*.013+l*2.3)*4+Math.sin(z*.031+l)*1.7}
  // Phase 27: physically continuous cobblestone streets. Curved ribbon follows the same lane centerline as combat.
- function cobbleTexture(){const c=document.createElement('canvas');c.width=512;c.height=512;const q=c.getContext('2d');q.fillStyle='#383b3b';q.fillRect(0,0,512,512);let seed=7143;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let y=-18;y<530;y+=28){let offset=(Math.floor(y/28)%2)*27;for(let x=-58+offset;x<550;x+=54){let r=75+rand()*35;q.fillStyle=`rgb(${r|0},${(r*.98)|0},${(r*.89)|0})`;q.beginPath();q.roundRect(x+2+rand()*3,y+2,46+rand()*5,22+rand()*3,4);q.fill();q.strokeStyle='#292d2b';q.lineWidth=2;q.stroke();q.fillStyle='rgba(180,177,149,.10)';q.fillRect(x+6,y+5,29,2)}}const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.colorSpace=T.SRGBColorSpace;return t}
+ function cobbleTexture(){const c=document.createElement('canvas');c.width=512;c.height=512;const q=c.getContext('2d');q.fillStyle='#a9a58f';q.fillRect(0,0,512,512);let seed=7143;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let y=-18;y<530;y+=28){let offset=(Math.floor(y/28)%2)*27;for(let x=-58+offset;x<550;x+=54){let r=145+rand()*40;q.fillStyle=`rgb(${r|0},${(r*.98)|0},${(r*.89)|0})`;q.beginPath();q.roundRect(x+2+rand()*3,y+2,46+rand()*5,22+rand()*3,4);q.fill();q.strokeStyle='#292d2b';q.lineWidth=2;q.stroke();q.fillStyle='rgba(180,177,149,.10)';q.fillRect(x+6,y+5,29,2)}}const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.colorSpace=T.SRGBColorSpace;return t}
  function ribbon(l,width,mat,y=.08){const verts=[],uv=[],idx=[],segments=210;for(let i=0;i<=segments;i++){let z=4+i*636/segments,x=laneX(l,z);for(let side of [-1,1]){verts.push(x+side*width/2,y,z);uv.push(side<0?0:1,z/9)}}for(let i=0;i<segments;i++){let a=i*2;idx.push(a,a+2,a+1,a+1,a+2,a+3)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(verts,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();const m=mesh(g,mat,0,0,0);m.receiveShadow=true;return m}
  function cobblestoneLanes(){let edge=material('#514f49');const cobble=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:1});for(let l=-1;l<=1;l++){ribbon(l,15,edge,.045);ribbon(l,12.8,cobble,.105);for(let z=95;z<549;z+=14){for(let side of [-1,1]){let x=laneX(l,z)+side*7.65;let curb=mesh(new T.BoxGeometry(.85,.36,3.5),material((Math.floor(z/14)%3)?'#6a685f':'#77736a'),x,.20,z);curb.rotation.y=Math.sin(z*.013+l*2.3)*.05}}}}
  // Open, water-free sanctuary terraces; all props stay outside the walking area.
  function sanctuary(x,z,friendly){
   const g=new T.Group();g.position.set(x,0,z);g.userData.baseZone='sanctuary';scene.add(g);
-  const stone=surface('slate','#787e78',3),trim=material('#b7a476',.3),accent=new T.MeshStandardMaterial({color:friendly?'#83bdc5':'#b97586',emissive:friendly?'#24525a':'#512331',emissiveIntensity:.4,roughness:.7});
+  const stone=surface('slate','#c8c5ad',3),trim=material('#b7a476',.3),accent=new T.MeshStandardMaterial({color:friendly?'#83bdc5':'#b97586',emissive:friendly?'#24525a':'#512331',emissiveIntensity:.4,roughness:.7});
   mesh(new T.CylinderGeometry(18,18,.24,64),stone,0,.2,0,g);
   const ring=mesh(new T.TorusGeometry(17,.09,6,80),trim,0,.34,0,g);ring.rotation.x=Math.PI/2;
   const seal=mesh(new T.RingGeometry(3.7,4,48),accent,0,.335,0,g);seal.rotation.x=-Math.PI/2;
@@ -262,7 +262,7 @@ const GF21 = (() => {
  let witchwood=null;
  function connectBases(){const road=new T.MeshStandardMaterial({map:cobbleTexture(),roughness:.95});for(const z of [24,620]){const path=mesh(new T.PlaneGeometry(26,12),road,0,.345,z);path.rotation.x=-Math.PI/2;for(const x of [-87,87]){const outer=mesh(new T.PlaneGeometry(44,12),road,x,.345,z);outer.rotation.x=-Math.PI/2;}}witchwood=window.GFBuildWitchwood(T,scene,{mesh,material,surface,laneX});}
  function buildBases(){
-  const paving=surface('slate','#666e6a',4),edge=surface('masonry','#555d59',3),gold=material('#a28e63',.3);
+  const paving=surface('slate','#c2bca6',4),edge=surface('masonry','#9b9f8c',3),gold=material('#a28e63',.3);
   for(const friendly of [true,false]){
    const spawnZ=friendly?-48:692,bossZ=friendly?-2:646,center=friendly?8:636;
    // Broad promenade joins the rear terrace, boss court and all three lane exits.
@@ -272,11 +272,11 @@ const GF21 = (() => {
     mesh(new T.BoxGeometry(2,.6,126),edge,side*109,.4,center);
     for(const dz of [-48,-16,16,48]){mesh(new T.BoxGeometry(1.2,3,1.2),edge,side*106,1.7,center+dz);mesh(new T.BoxGeometry(1.5,.2,1.5),gold,side*106,3.3,center+dz);}
    }
-   const court=mesh(new T.CylinderGeometry(27,27,.08,80),surface('masonry','#747a72',3),laneX(0,bossZ),.34,bossZ);court.userData.baseZone='boss-court';
+   const court=mesh(new T.CylinderGeometry(27,27,.08,80),surface('masonry','#d2c9ad',3),laneX(0,bossZ),.34,bossZ);court.userData.baseZone='boss-court';
    for(const side of [-1,1]){// Broad open center keeps the approach readable.
     const path=mesh(new T.PlaneGeometry(1.2,108),gold,side*25,.325,center);path.rotation.x=-Math.PI/2;}
    // Roman colonnades, crimson standards and braziers sit off the main path.
-   const roman=surface('masonry','#b8aa8b',2),banner=material('#762b32'),bronze=material('#bd9552',.4);
+   const roman=surface('masonry','#b8aa8b',2),banner=material('#255a75'),bronze=material('#bd9552',.4);
    for(const side of [-1,1])for(const dz of [-42,-20,2,24,46]){
     const x=side*91,z=center+dz;
     mesh(new T.CylinderGeometry(1.1,1.4,.6,16),roman,x,.6,z);
@@ -580,8 +580,7 @@ const GF21 = (() => {
  for(let z of [125,310,510]){block(0,.015,z,205,.08,10,dirt);for(let x=-84;x<=84;x+=12){let v=Math.sin(x*.3+z);if(Math.abs(v)>.4){let r=mesh(new T.DodecahedronGeometry(.6+Math.abs(v)*.4,0),pebbles,x,.45,z+7);r.rotation.y=v}}}
  for(let side of [-1,1])for(let z of [125,310,510]){let x=side*47;const ring=mesh(new T.TorusGeometry(5,.55,8,20),material('#5b594c'),x,.1,z);ring.rotation.x=-Math.PI/2;for(let a=0;a<8;a++){let theta=a*Math.PI/4;let rock=mesh(new T.DodecahedronGeometry(.9,0),walls,x+Math.sin(theta)*5,.5,z+Math.cos(theta)*5);rock.rotation.y=theta}buffs.push({x,z,kind:z===125?'SPEED':z===310?'POWER':'DEFENSE',alive:true,respawn:0,orb:null})}
  for(let x=-150;x<=150;x+=26)for(let z=0;z<650;z+=42){if(Math.abs(x-laneX(-1,z))<22||Math.abs(x-laneX(0,z))<22||Math.abs(x-laneX(1,z))<22)continue;if([125,310,510].some(a=>Math.abs(z-a)<13))continue;if(Math.sin(x*2.13+z*.73)>.0)trunk(x+Math.sin(z)*3,z,8+Math.abs(Math.sin(x))*7,x+z)}
-  village();
-  phase25Landscape();
+  buildSunkenEmpire();
   cobblestoneLanes();
   scene.updateMatrixWorld(true);
   for(const child of [...scene.children]){if(!child.isMesh&&!child.isGroup)continue;const bounds=new T.Box3().setFromObject(child);if(bounds.isEmpty())continue;const c=bounds.getCenter(new T.Vector3());if(Math.abs(c.x)<112&&(c.z<50||c.z>594)&&bounds.max.z-bounds.min.z<130){scene.remove(child);window.GFDisposeFigure(child);}}
@@ -589,6 +588,27 @@ const GF21 = (() => {
   connectBases();
   makeDemonDogs();
   window.GFOptimizeScenery(T,scene);
+ }
+ function buildSunkenEmpire(){
+  const limestone=surface('masonry','#d6d0b5',3),marble=surface('plaster','#e6dfc9',2),moss=material('#55754a'),bronze=material('#bba266',.35),blue=material('#285e78');
+  function ruin(x,z,scale=1){const g=new T.Group();g.position.set(x,0,z);g.scale.setScalar(scale);scene.add(g);g.name='sunken-temple';
+   mesh(new T.BoxGeometry(17,.6,13),limestone,0,.3,0,g);
+   for(const side of [-1,1])for(let k=0;k<3;k++){const h=k===2&&side===1?3.7:8;mesh(new T.CylinderGeometry(.65,.85,h,16),marble,side*6,h/2+.6,-4+k*4,g);mesh(new T.BoxGeometry(2,.5,2),limestone,side*6,h+.9,-4+k*4,g);}
+   mesh(new T.BoxGeometry(14,1.3,2.4),marble,0,9.6,-4,g);
+   for(let k=0;k<7;k++){const ivy=mesh(new T.IcosahedronGeometry(.65,1),moss,-5+k*1.5,10-Math.sin(k)*.4,-4,g);ivy.scale.set(1.5,.4,1);}
+   const fallen=mesh(new T.CylinderGeometry(.7,.7,5,14),marble,4,1,3,g);fallen.rotation.z=1.3;
+   mesh(new T.BoxGeometry(2,.2,3.6),blue,-5,7,-2.5,g);
+  }
+  for(const side of [-1,1])for(const z of [145,255,435,495])ruin(side*72,z,.8);
+  for(const side of [-1,1])for(const z of [110,290,470,610])ruin(side*145,z,1.7);
+  // Coastal horizon beyond the walkable mainland, with monumental island ruins.
+  const seaMat=new T.MeshPhysicalMaterial({color:'#329eae',roughness:.22,metalness:.25,clearcoat:1});
+  for(const side of [-1,1]){const sea=mesh(new T.PlaneGeometry(550,1300),seaMat,side*470,-1,320);sea.rotation.x=-Math.PI/2;sea.name='coastal-sea';
+   for(let j=0;j<16;j++){const z=-60+j*52;const cliff=mesh(new T.DodecahedronGeometry(13+(j%3)*3,1),limestone,side*190,-3,z);cliff.scale.set(1.5,1,2);}
+   for(let j=0;j<6;j++){const z=60+j*105;mesh(new T.BoxGeometry(7,18,7),limestone,side*166,9,z);mesh(new T.BoxGeometry(7,18,7),limestone,side*166,9,z+28);const arch=mesh(new T.TorusGeometry(14,2.1,8,32,Math.PI),marble,side*166,15,z+14);arch.rotation.y=Math.PI/2;mesh(new T.BoxGeometry(9,2,42),limestone,side*166,30,z+14);}
+  }
+  // Laurel markers and restored sanctuaries keep the base uncluttered.
+  for(const z of [-48,692])for(const side of [-1,1]){mesh(new T.BoxGeometry(3,2,3),marble,side*32,1,z);const emblem=mesh(new T.TorusGeometry(2.2,.25,8,40),bronze,side*32,4,z);mesh(new T.CylinderGeometry(.2,.2,5,10),bronze,side*32,4,z);}
  }
  function fitGLB(root){root.rotation.x=-Math.PI/2;root.updateMatrixWorld(true);const box=new T.Box3().setFromObject(root);const h=Math.max(.001,box.max.y-box.min.y);const scale=3.15/h;root.scale.setScalar(scale);root.position.y=-box.min.y*scale;return root}
  function applyStyle(root){window.GFGodAppearance?.(root,T,mesh,material)}
@@ -765,7 +785,7 @@ const GF21 = (() => {
    if(weaponAttackStep===3)weaponGrip.rotation.x=-1.4+2.6*t;
   }
  }
-  async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');scene=new T.Scene();scene.background=new T.Color('#101c1b');scene.fog=new T.FogExp2('#142321',.0065);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;if(renderer.shadowMap){renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;}scene.add(new T.HemisphereLight(0xc6d9f3,0x29332a,1.25));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-34,right:34,top:34,bottom:-34,near:1,far:100});sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;sunLight=sun;scene.add(sun,sun.target);const rim=new T.DirectionalLight(0x8aaac9,.75);rim.position.set(20,14,-25);scene.add(rim);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;$('fallback').classList.remove('show');requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;$('fallback').textContent='Battle rendering needs WebGL 2. Open the game in a supported browser with graphics acceleration enabled.';$('fallback').classList.add('show');console.error(e)}}
+  async function init(){if(loading||initialized)return;loading=true;try{T=await import('https://esm.sh/three@0.170.0');scene=new T.Scene();scene.background=new T.Color('#a9d5dc');scene.fog=new T.FogExp2('#b1d1cd',.0026);camera=new T.PerspectiveCamera(68,1,.1,250);renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;if(renderer.shadowMap){renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;}scene.add(new T.HemisphereLight(0xc6d9f3,0x29332a,1.25));let sun=new T.DirectionalLight(0xf1d3a1,2.5);sun.position.set(-15,40,25);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-34,right:34,top:34,bottom:-34,near:1,far:100});sun.shadow.bias=-.0004;sun.shadow.normalBias=.045;sunLight=sun;scene.add(sun,sun.target);const rim=new T.DirectionalLight(0x8aaac9,.75);rim.position.set(20,14,-25);scene.add(rim);makeTerrain();hero=await getGod();modelRoot=new T.Group();modelRoot.add(hero);scene.add(modelRoot);buildPhysicalWeapon(window.gfGetConfig?.().weapon||'Greatsword');combatForge=window.GFCombatForge?.(T,scene,modelRoot)||null;spawn();spawnGods();setupHud();matchStartedAt=performance.now();matchElapsed=0;lastWave=0;loading=false;initialized=true;$('fallback').classList.remove('show');requestAnimationFrame(frame)}catch(e){loading=false;$('status').textContent='3D scene failed: '+e.message;$('fallback').textContent='Battle rendering needs WebGL 2. Open the game in a supported browser with graphics acceleration enabled.';$('fallback').classList.add('show');console.error(e)}}
  // Phase 33: distinct weapon reach, forward hit arcs and three-stage directional combos.
  function receiveDamage(amount,now=performance.now()){
   if(hp<=0||matchEnded)return;hp=Math.max(0,hp-amount*(now<shieldUntil?.25:1));recallUntil=0;
