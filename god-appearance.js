@@ -188,11 +188,11 @@ window.GFAnimateFigure=function(root,dt,{moving=0,backward=false,attack=0,airbor
   root.userData.gait=(root.userData.gait||0)+dt*10*Math.min(1,Math.abs(moving));
   const phase=root.userData.gait,blend=1-Math.exp(-dt*18),amount=Math.min(1,Math.abs(moving));
   for(const side of [-1,1]){const j=rig[side],stride=Math.sin(phase+(side===1?Math.PI:0))*amount*(backward?-1:1);
-   const hip=airborne?-.55:stride*.6,knee=airborne?.9:Math.max(0,-stride)*.85;
+   const hip=airborne?-.55:stride*.64,knee=airborne?1.05:Math.max(0,-Math.sin(phase+(side===1?Math.PI:0)-.35))*amount*1.05;
    j.leg.rotation.x+=(hip-j.leg.rotation.x)*blend;j.knee.rotation.x+=(knee-j.knee.rotation.x)*blend;
-   let arm=-stride*.38,elbow=-.12-Math.abs(stride)*.18;
+   let arm=-stride*.38,elbow=-.22-Math.max(0,Math.sin(phase+(side===1?Math.PI:0)+.8))*amount*.5;
    if(airborne){arm=-.6;elbow=-.5;}
-   if(attack>0&&side===1){arm=-Math.sin(attack*Math.PI)*1.45;elbow=-.3-Math.sin(attack*Math.PI)*.65;}
+   if(attack>0&&side===1){arm=-Math.sin(attack*Math.PI)*1.45;elbow=-.15-Math.sin(Math.min(1,attack*1.6)*Math.PI)*1.15;}
    j.arm.rotation.x+=(arm-j.arm.rotation.x)*blend;j.elbow.rotation.x+=(elbow-j.elbow.rotation.x)*blend;
    j.arm.rotation.z=side===1&&attack>0?-Math.sin(attack*Math.PI)*.35:0;
   }

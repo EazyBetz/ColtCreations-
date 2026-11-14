@@ -8,7 +8,7 @@ function get(id){if(!elements.has(id))elements.set(id,new Element());return elem
 class Renderer{setPixelRatio(r){this.r=r}getPixelRatio(){return this.r}setSize(){}render(){} }
 const T={...Three,WebGLRenderer:Renderer,TextureLoader:class{load(){return new Three.Texture()}}};
 const ctx={console,TEST_THREE:T,performance:{now:()=>now},document:{hidden:false,createElement:()=>new Element(),getElementById:get,querySelectorAll:()=>[]},MutationObserver:class{observe(){}},requestAnimationFrame:noop,devicePixelRatio:1,Event:class{},setTimeout,clearTimeout};ctx.window=ctx;ctx.addEventListener=noop;vm.createContext(ctx);
-vm.runInContext(read('heritage.js').split('(function(){')[0],ctx);vm.runInContext(read('god-appearance.js'),ctx);vm.runInContext(read('world-enhancements.js'),ctx);vm.runInContext(read('regional-abilities.js').split('(function(){')[0],ctx);vm.runInContext(read('spell-art.js'),ctx);vm.runInContext(read('combat-overhaul.js'),ctx);
+vm.runInContext(read('heritage.js').split('(function(){')[0],ctx);vm.runInContext(read('god-appearance.js'),ctx);vm.runInContext(read('world-enhancements.js'),ctx);vm.runInContext(read('regional-abilities.js').split('(function(){')[0],ctx);vm.runInContext(read('match-progression.js'),ctx);vm.runInContext(read('spell-art.js'),ctx);vm.runInContext(read('combat-overhaul.js'),ctx);
 let config=ctx.GFNormalizeHeritage({heritage:'japan',sex:'Male',body:'Athletic',ability4:'Sky Leap'});ctx.gfGetConfig=()=>config;ctx.gf21Joy=()=>({x:0,y:0});
 const signatures=new Set();let variants=0;
 for(const [region,h] of Object.entries(ctx.GFHeritages))for(const helmet of h.helmets){
@@ -35,7 +35,7 @@ const rules=ctx.GFWorldRules;assert.equal(rules.bridges.length,7);for(const b of
 assert.equal(rules.surfaceHeight(0,-48),4.32);assert.equal(rules.surfaceHeight(0,692),4.32);for(let z=-34;z<-18;z++)assert(rules.surfaceHeight(0,z)>=rules.surfaceHeight(0,z+1));
 const from={x:0,z:10},to={x:0,z:26};assert.equal(rules.leapPoint(from,to,0).y,0);assert.equal(rules.leapPoint(from,to,1).y,0);assert.equal(rules.leapPoint(from,to,.5).y,4.4);
 let source=read('phase21.js').replace("await import('https://esm.sh/three@0.170.0')",'TEST_THREE');
-source=source.replace(' return {getGod,fitGLB,applyStyle};',`return {ultimate,tickUltimates,laneApproach,inSanctuary,init,resetMatch,hit,cast,utility,frame,receiveDamage,updateBattleSystems,tickLeap,collision,updateDemonDogs,endIfTitanDestroyed,spawnWave,get state(){return {hp,maxHp,respawnAt,position,yaw,camera,jumpHeight,leap,mobs,bots,demonDogs,baseStructures,scene,matchEnded,active,matchElapsed}},setPosition(x,z){position={x,z}},setActive(){active=true},clearCooldown(){abilityReady=[0,0,0];utilityCooldown=0;attackReadyAt=0},setRecall(){recallUntil=now+4500},get recall(){return recallUntil}};`);
+source=source.replace(' return {getGod,fitGLB,applyStyle};',`return {powerCooldown,remoteContext,addMatchXP,spendSkill,buyItem,levelBot,get progressionState(){return {progression,gold,level,xp,maxHp,hp,powerBonus,ownedItems}},ultimate,tickUltimates,laneApproach,inSanctuary,init,resetMatch,hit,cast,utility,frame,receiveDamage,updateBattleSystems,tickLeap,collision,updateDemonDogs,endIfTitanDestroyed,spawnWave,get state(){return {hp,maxHp,respawnAt,position,yaw,camera,jumpHeight,leap,mobs,bots,demonDogs,baseStructures,scene,matchEnded,active,matchElapsed}},setPosition(x,z){position={x,z}},setActive(){active=true},clearCooldown(){abilityReady=[0,0,0];utilityCooldown=0;attackReadyAt=0},setRecall(){recallUntil=now+4500},get recall(){return recallUntil}};`);
 // No exported test hooks in shipped source: this instrumentation exists only in this VM.
 vm.runInContext(source+'\nthis.qa=GF21;',ctx);await ctx.qa.init();let state=ctx.qa.state;
 assert(state.scene&&state.mobs.length===18,'full scene must initialize');assert.equal(state.demonDogs.length,3);assert(state.demonDogs.every(d=>d.hp>=540&&d.damage<=20));
@@ -47,6 +47,9 @@ assert.equal(Object.keys(ctx.GFSpellDesigns).length,60);
 for(const [name,meta] of Object.entries(ctx.GFRegionalAbilityMeta)){
  forge.ability(name,0,20,0,0,33);assert(fxScene.children.some(g=>g.name==='spell-'+name),name+' has no art');forge.tick(.16);fxScene.traverse(o=>{assert(Number.isFinite(o.position.x)&&Number.isFinite(o.position.y)&&Number.isFinite(o.position.z));});forge.tick(10);assert.equal(fxScene.children.length,0,'effect must clean up');
 }
+// Real economy: points are awarded once, tiers consume gold and purchases require sanctuary.
+ctx.qa.resetMatch();ctx.qa.addMatchXP(80);assert.equal(ctx.qa.progressionState.level,2);assert.equal(ctx.qa.progressionState.progression.points,1);assert(ctx.qa.spendSkill('vitality'));assert.equal(ctx.qa.progressionState.maxHp,400);assert(!ctx.qa.spendSkill('power'));assert(ctx.qa.buyItem(0));assert.equal(ctx.qa.progressionState.gold,300);assert(!ctx.qa.buyItem(0));ctx.qa.setPosition(0,200);assert(!ctx.qa.buyItem(4));ctx.qa.resetMatch();assert.equal(ctx.qa.progressionState.level,1);assert.equal(ctx.qa.progressionState.progression.points,0);assert.equal(Object.keys(ctx.qa.progressionState.ownedItems).length,0);
+const ai=ctx.qa.state.bots[0];ctx.qa.levelBot(ai,100000);assert.equal(ai.progression.level,30);assert(ai.max>310);ctx.qa.resetMatch();assert.equal(ai.progression.level,1);
 // Base zoning and every lane's final approach must agree with gameplay coordinates.
 assert.equal(state.position.z,-48);assert(ctx.qa.inSanctuary(state.position.x,state.position.z,true));
 for(const boss of state.baseStructures){
@@ -78,6 +81,10 @@ ctx.gf21Joy=()=>({x:0,y:0});
 const battleCanvas=get('battle').children.find(e=>e.id==='gf21Battle');
 for(const direction of [-1,1]){const before=ctx.qa.state.yaw;battleCanvas.listeners.pointerdown({pointerId:7,clientX:100,clientY:100});battleCanvas.listeners.pointermove({pointerId:7,clientX:100+direction*30,clientY:100});assert.equal(Math.sign(ctx.qa.state.yaw-before),-direction);battleCanvas.listeners.lostpointercapture();const stopped=ctx.qa.state.yaw;battleCanvas.listeners.pointermove({pointerId:7,clientX:300,clientY:100});assert.equal(ctx.qa.state.yaw,stopped);}
 
+// Purchased defenses, health and haste change actual combat values.
+ctx.qa.resetMatch();assert(ctx.qa.buyItem(2));ctx.qa.receiveDamage(100,now);assert.equal(ctx.qa.progressionState.hp,255);ctx.qa.resetMatch();assert(ctx.qa.buyItem(3));assert.equal(ctx.qa.progressionState.maxHp,425);ctx.qa.resetMatch();assert(ctx.qa.buyItem(1));assert.equal(ctx.qa.powerCooldown(),.95);ctx.qa.resetMatch();
+// Host and guest own separate progression/equipment, validated on the host.
+await ctx.GFCoop.start(true);const hostGold=ctx.qa.progressionState.gold;const guest=ctx.qa.state.bots.find(b=>b.human);ctx.GFCoop.receive({type:'action',action:'buy',item:0});assert.equal(guest.gold,300);assert.equal(ctx.qa.progressionState.gold,hostGold);ctx.qa.remoteContext(()=>ctx.qa.addMatchXP(80));ctx.GFCoop.receive({type:'action',action:'skill',key:'vitality'});assert.equal(guest.max,400);assert.equal(ctx.qa.progressionState.level,1);assert.equal(ctx.qa.progressionState.maxHp,350);ctx.GFCoop.stop();ctx.qa.resetMatch();
 // Exercise actual simulation and render pipeline with all terrain/actors present.
 for(let i=0;i<80;i++){now+=16;ctx.qa.frame(now)}ctx.qa.spawnWave();for(let i=0;i<80;i++){now+=16;ctx.qa.frame(now)}
 let meshes=0;ctx.qa.state.scene.traverse(o=>{if(o.isMesh){meshes++;assert(Number.isFinite(o.position.y));}});

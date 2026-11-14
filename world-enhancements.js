@@ -9,15 +9,26 @@ window.GFWorldRules={
 };
 window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
  const wood=surface('masonry','#c6c0a5',2),brick=surface('masonry','#b8b59d',3),slate=surface('slate','#ded5ba',2);
- const active=[];
- const water=new T.MeshPhysicalMaterial({color:'#22b8bd',metalness:.22,roughness:.19,clearcoat:1,clearcoatRoughness:.12,transparent:true,opacity:.87,side:T.DoubleSide});
+ const active=[],waterMeshes=[];
+ const water=new T.MeshPhysicalMaterial({color:'#247f9c',metalness:.38,roughness:.12,clearcoat:1,clearcoatRoughness:.12,transparent:true,opacity:.87,side:T.DoubleSide});
  const rippleData=new Uint8Array(64*64*4);for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4,v=128+45*Math.sin(x*.6+y*.3)+25*Math.sin(y*.9-x*.2);rippleData[i]=rippleData[i+1]=rippleData[i+2]=v;rippleData[i+3]=255;}
  const ripples=new T.DataTexture(rippleData,64,64);ripples.wrapS=ripples.wrapT=T.RepeatWrapping;ripples.repeat.set(3,55);ripples.needsUpdate=true;water.bumpMap=ripples;water.bumpScale=.14;
  function stream(points,width){
   const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(p[0],.07,p[1]))),verts=[],uv=[],indices=[];
-  for(let i=0;i<=320;i++){const t=i/320,p=curve.getPoint(t),tangent=curve.getTangent(t),nx=-tangent.z,nz=tangent.x,w=width*(1+.12*Math.sin(t*51));for(const side of [-1,1]){verts.push(p.x+nx*w*side,.07,p.z+nz*w*side);uv.push((side+1)/2,t);}}
+  for(let i=0;i<=320;i++){const t=i/320,p=curve.getPoint(t),tangent=curve.getTangent(t),nx=-tangent.z,nz=tangent.x,w=width*(1+.18*Math.sin(t*51)+.09*Math.sin(t*153)+.05*Math.cos(t*317));for(const side of [-1,1]){verts.push(p.x+nx*w*side,.07,p.z+nz*w*side);uv.push((side+1)/2,t);}}
   for(let i=0;i<320;i++){const a=i*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}
-  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();const river=mesh(geo,water,0,0,0);river.userData.dynamic=true;river.name='continuous-stream';river.castShadow=false;
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();const river=mesh(geo,water,0,0,0);river.userData.dynamic=true;river.name='continuous-stream';river.castShadow=false;waterMeshes.push({geo,base:new Float32Array(verts)});
+  // Uneven eroded banks: continuous sloped shelves, gravel lips and higher ridges.
+  for(const side of [-1,1]){const bank=[],bankIndices=[],foam=[];
+   for(let i=0;i<=320;i++){const t=i/320,p=curve.getPoint(t),v=curve.getTangent(t),w=width*(1+.18*Math.sin(t*51)+.09*Math.sin(t*153)+.05*Math.cos(t*317));const crossing=[24,125,310,330,510,620].some(z=>Math.abs(z-p.z)<15),ridge=crossing?.1:.55+.35*Math.sin(t*87)**2;
+    for(const [offset,h] of [[-.3,-.12],[1.1,.12],[2.5,ridge],[4,.04]])bank.push(p.x-v.z*(w+offset)*side,h,p.z+v.x*(w+offset)*side);
+    for(const offset of [-.22,.08])foam.push(p.x-v.z*(w+offset)*side,.12,p.z+v.x*(w+offset)*side);
+   }
+   for(let i=0;i<320;i++)for(let j=0;j<3;j++){const a=i*4+j;bankIndices.push(a,a+1,a+4,a+1,a+5,a+4);}
+   const bg=new T.BufferGeometry();bg.setAttribute('position',new T.Float32BufferAttribute(bank,3));bg.setIndex(bankIndices);bg.computeVertexNormals();const bm=new T.MeshStandardMaterial({color:'#8d967f',roughness:1,side:T.DoubleSide});mesh(bg,bm,0,0,0).name='eroded-riverbank';
+   const fg=new T.BufferGeometry();fg.setAttribute('position',new T.Float32BufferAttribute(foam,3));fg.setIndex(indices);fg.computeVertexNormals();mesh(fg,new T.MeshBasicMaterial({color:'#c7e5d5',transparent:true,opacity:.27,side:T.DoubleSide,depthWrite:false}),0,0,0).name='shore-foam';
+  }
+
   // Organic gravel banks, with gaps at crossings and clear paths.
   for(let i=0;i<=90;i++){const t=i/90,p=curve.getPoint(t),v=curve.getTangent(t);if([24,125,310,330,510,620].some(z=>Math.abs(z-p.z)<18))continue;for(const side of [-1,1]){const rock=mesh(new T.DodecahedronGeometry(.45+(i%3)*.15,0),brick,p.x-v.z*width*side,.13,p.z+v.x*width*side);rock.scale.set(1.6,.6,1);}}
  }
@@ -41,7 +52,19 @@ window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
   mesh(new T.BoxGeometry(1.8,4.2,36),brick,0,2.1,0,g);mesh(new T.BoxGeometry(2.2,.35,36.8),slate,0,4.3,0,g);
   for(let dz=-18;dz<=18;dz+=6){mesh(new T.BoxGeometry(2.4,5,2),brick,0,2.5,dz,g);mesh(new T.BoxGeometry(2.7,.3,2.3),slate,0,5.12,dz,g);}
  }
- return {tick(time){ripples.offset.y=-time*.000018;ripples.offset.x=Math.sin(time*.0001)*.12;}};
+ // Authored roadside ruins and vegetation stay clear of lane/camp corridors.
+ for(const side of [-1,1])for(let z=145;z<540;z+=42){const x=side*(26+Math.sin(z)*3);if([125,310,330,510].some(v=>Math.abs(z-v)<19)||GFWorldRules.dogs.camps.some(c=>Math.hypot(x-c.x,z-c.z)<25))continue;
+  const ruin=new T.Group();ruin.position.set(x,0,z);scene.add(ruin);
+  mesh(new T.BoxGeometry(5,.45,4),brick,0,.2,0,ruin);
+  const column=mesh(new T.CylinderGeometry(.55,.75,4.6,16),slate,0,2.6,0,ruin);column.rotation.z=Math.sin(z)*.09;
+  mesh(new T.BoxGeometry(1.7,.4,1.7),slate,0,4.9,0,ruin);
+  if(z%3){const statue=new T.Group();ruin.add(statue);statue.position.set(0,5.1,0);mesh(new T.ConeGeometry(.65,1.8,16),slate,0,.9,0,statue);mesh(new T.SphereGeometry(.36,16,12),slate,0,2,0,statue);for(const arm of [-1,1])mesh(new T.CylinderGeometry(.1,.15,1.2,10),slate,arm*.5,1.1,0,statue).rotation.z=arm*.3;}
+  for(let i=0;i<6;i++){const rock=mesh(new T.DodecahedronGeometry(.35+i*.045),brick,Math.sin(i*2)*3,.25,Math.cos(i*2)*2,ruin);rock.scale.set(1.4,.7,1);}
+  for(let i=0;i<7;i++){const stem=mesh(new T.ConeGeometry(.16,.9+(i%3)*.3,5),material('#60785b'),2.5+Math.sin(i)*.8,.6,Math.cos(i)*1.7,ruin);stem.rotation.z=Math.sin(i)*.15;}
+  const jar=mesh(new T.SphereGeometry(.55,14,10),material('#987354'),-2,.65,1,ruin);jar.scale.y=1.4;mesh(new T.TorusGeometry(.24,.07,6,18),brick,-2,1.4,1,ruin).rotation.x=Math.PI/2;
+ }
+ let lastWave=0;
+ return {tick(time){if(time-lastWave>90){lastWave=time;for(const {geo,base} of waterMeshes){const pos=geo.attributes.position;for(let i=0;i<pos.count;i++)pos.setY(i,.07+Math.sin(base[i*3]*.7+base[i*3+2]*.3-time*.0018)*.035+Math.cos(base[i*3+2]*1.2-time*.0025)*.018);pos.needsUpdate=true;geo.computeVertexNormals();}}ripples.offset.y=-time*.000018;ripples.offset.x=Math.sin(time*.0001)*.12;}};
 };
 // Batch repeated static props per area; animated actors and water remain independent.
 window.GFOptimizeScenery=function(T,scene){
