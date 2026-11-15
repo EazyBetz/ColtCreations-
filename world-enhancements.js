@@ -1,5 +1,6 @@
 /* Shared terrain heights keep bridges, actors and camera on the same surface. */
 window.GFWorldRules={
+ decorWalls:[{x:-27,z:175,length:18},{x:27,z:175,length:18},{x:-27,z:267,length:18},{x:27,z:267,length:18},{x:-27,z:452,length:18},{x:27,z:452,length:18}],
  bridges:[{x:-48,z:24,axis:'x'},{x:48,z:24,axis:'x'},{x:-48,z:620,axis:'x'},{x:48,z:620,axis:'x'},{x:-98,z:330,axis:'z'},{x:92,z:330,axis:'z'},{x:Math.sin(330*.013)*4+Math.sin(330*.031)*1.7,z:330,axis:'z'}],
  bridgeHeight(t){return .32+1.45*Math.sin(Math.PI*Math.max(0,Math.min(1,t)))**2},
  sanctuaryHeight(x,z){const d=Math.min(z,644-z);if(Math.abs(x)>=24||d>=-18)return .32;if(d<=-34)return 4.32;return .32+Math.ceil((-18-d)/1)*.25},
@@ -45,6 +46,15 @@ window.GFBuildWitchwood=function(T,scene,{mesh,material,surface,laneX}){
   }
   for(let j=0;j<=8;j++)for(const side of [-1,1]){const x=-16+j*4,h=GFWorldRules.bridgeHeight(j/8);mesh(new T.BoxGeometry(.34,1.65,.34),wood,x,h+.72,side*5.75,g);mesh(new T.BoxGeometry(.65,.16,.65),brick,x,h+1.6,side*5.75,g);}
   for(let j=0;j<28;j++){const side=j%2?1:-1;mesh(new T.ConeGeometry(.1,1.2,4),material('#59633a'),-15+(j*7%30),.68,side*(8+j%8),g);}
+ }
+ // Cobblestone garden barriers: individual irregular blocks, capped posts and ivy.
+ const cobbleMaterials=['#82877d','#93998a','#a2a494','#777e76'].map(c=>surface('masonry',c,2));
+ for(const wall of GFWorldRules.decorWalls){const g=new T.Group();g.name='cobblestone-barrier';g.position.set(wall.x,0,wall.z);scene.add(g);
+  mesh(new T.BoxGeometry(1.3,2.3,wall.length),material('#4b514c'),0,1.15,0,g);
+  for(let row=0;row<5;row++)for(let col=0;col<16;col++){const z=-wall.length/2+(col+.5)*wall.length/16+(row%2? .18:0),stone=mesh(new T.DodecahedronGeometry(.65,0),cobbleMaterials[(row+col)%4],0,.28+row*.43,z,g);stone.scale.set(1.1,.36,.86);stone.rotation.y=Math.sin(col*3+row)*.18;}
+  mesh(new T.BoxGeometry(1.65,.28,wall.length+.2),slate,0,2.42,0,g);
+  for(const side of [-1,1]){mesh(new T.BoxGeometry(2,3,2),brick,0,1.5,side*(wall.length/2),g);mesh(new T.BoxGeometry(2.3,.3,2.3),slate,0,3.13,side*wall.length/2,g);const pot=mesh(new T.SphereGeometry(.7,12,8),material('#8c6d51'),0,3.8,side*wall.length/2,g);pot.scale.y=.65;for(let i=0;i<5;i++)mesh(new T.ConeGeometry(.23,.8,5),material('#507357'),Math.sin(i)*.35,4.2,side*wall.length/2+Math.cos(i)*.35,g);}
+  for(let i=0;i<12;i++){const ivy=mesh(new T.SphereGeometry(.22,6,5),material('#446d49'),.75,2.3-i*.12,Math.sin(i)*2,g);ivy.scale.set(.3,1,1.4);}
  }
  // Segmented outer masonry: gaps at crossroads; nothing blocks the three lanes.
  for(const side of [-1,1])for(const z of [72,168,265,365,455,570]){

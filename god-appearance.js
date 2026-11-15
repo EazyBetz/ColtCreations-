@@ -4,7 +4,7 @@
  window.GFDisposeFigure=dispose;
  const surfaceMaps=new Map();
  function material(T,color,kind){
-  const m=new T.MeshPhysicalMaterial({color,metalness:kind==='metal'?.68:0,roughness:kind==='metal'?.38:kind==='skin'?.6:.88,clearcoat:kind==='metal'?.16:0,clearcoatRoughness:.45,sheen:kind==='cloth'?.35:0,sheenColor:new T.Color(color),sheenRoughness:.9});
+  const m=new T.MeshPhysicalMaterial({color,metalness:kind==='metal'?.68:0,roughness:kind==='metal'?.31:kind==='skin'?.48:.86,clearcoat:kind==='metal'?.16:0,clearcoatRoughness:.45,sheen:kind==='cloth'?.35:kind==='skin'?.12:0,sheenColor:new T.Color(color),sheenRoughness:.9});
   if(!surfaceMaps.has(kind)){const size=128,data=new Uint8Array(size*size*4);for(let y=0;y<size;y++)for(let x=0;x<size;x++){const raw=Math.sin(x*91.7+y*17.31)*43758.5,noise=raw-Math.floor(raw);const value=kind==='cloth'?135+((x%4<2)===(y%4<2)?34:-24)+noise*9:kind==='metal'?165+Math.sin(y*1.8)*7+noise*15:160+noise*25;const i=(y*size+x)*4;data[i]=data[i+1]=data[i+2]=value;data[i+3]=255}const texture=new T.DataTexture(data,size,size);texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(3,3);texture.needsUpdate=true;surfaceMaps.set(kind,texture)}
   m.roughnessMap=surfaceMaps.get(kind);m.bumpMap=surfaceMaps.get(kind);m.bumpScale=kind==='cloth'?.012:kind==='skin'?.002:.004;return m;
  }
@@ -111,27 +111,40 @@
   // Human proportions: 3.15 units, approximately seven and a half heads tall.
   const torsoPoints=[[.28,1.44],[.32,1.58],[heavy?.43:.32,1.85],[female?.41:.44,2.13],[female?.4:.46,2.35],[.3,2.45]].map(([r,y])=>new T.Vector2(r,y));
   const torso=mesh(new T.LatheGeometry(torsoPoints,36),fabric);torso.scale.z=.63;
-  cyl(0,2.5,0,.105,.13,.16,skin);
-  const head=ell(0,2.86,-.014,.192,.266,.18,skin);ell(0,2.715,.035,.143,.125,.131,skin);ell(0,2.66,.09,.093,.055,.072,skin);for(const side of [-1,1])ell(side*.112,2.79,.127,.071,.065,.041,skin);
-  for(const s of [-1,1]){
-   ell(s*.203,2.83,-.005,.038,.071,.031,skin);
-   ell(s*.073,2.89,.175,.034,.011,.01,white);ell(s*.073,2.89,.188,.01,.01,.004,dark);
-   line([[s*.03,2.936,.181],[s*.08,2.946,.177],[s*.121,2.934,.16]],.009,hair);
+  cyl(0,2.51,0,.105,.13,.23,skin);
+  // Continuous head topology: shaped jaw, cheekbones, eye sockets and cranial dome.
+  const rings=[[2.61,.055,.065],[2.66,.112,.105],[2.72,.148,.132],[2.79,.177,.16],[2.86,.19,.172],[2.94,.188,.172],[3.01,.173,.159],[3.08,.125,.117],[3.12,.02,.02]],positions=[],uvs=[],indices=[];
+  const rows=40,segs=64;
+  for(let j=0;j<=rows;j++){const y=2.61+j/rows*.51;let k=0;while(k<rings.length-2&&rings[k+1][0]<y)k++;const t=Math.max(0,Math.min(1,(y-rings[k][0])/(rings[k+1][0]-rings[k][0]))),w=rings[k][1]*(1-t)+rings[k+1][1]*t,d=rings[k][2]*(1-t)+rings[k+1][2]*t;
+   for(let i=0;i<=segs;i++){const a=i/segs*Math.PI*2,x=Math.sin(a)*w;let z=Math.cos(a)*d-.005;if(z>0){const front=Math.max(0,Math.cos(a));z+=Math.exp(-1*((y-2.8)/.05)**2)*Math.exp(-1*((Math.abs(x)-.115)/.045)**2)*.021;z-=Math.exp(-1*((y-2.89)/.027)**2)*Math.exp(-1*((Math.abs(x)-.073)/.033)**2)*.022;z+=Math.exp(-1*((y-2.68)/.035)**2)*front*.022;}positions.push(x,y,z);uvs.push(i/segs,j/rows);}
   }
-  ell(0,2.85,.17,.021,.061,.035,skin);ell(0,2.812,.197,.028,.022,.027,skin);for(const side of [-1,1])ell(side*.025,2.805,.188,.017,.012,.015,skin);line([[-.045,2.752,.158],[0,2.747,.171],[.045,2.752,.158]],.006,material(T,'#68473b','skin'));
-  shell(0,2.92,-.018,.213,.21,.196,hair);
+  for(let j=0;j<rows;j++)for(let i=0;i<segs;i++){const a=j*(segs+1)+i;indices.push(a,a+1,a+segs+1,a+1,a+segs+2,a+segs+1);}
+  const headGeo=new T.BufferGeometry();headGeo.setAttribute('position',new T.Float32BufferAttribute(positions,3));headGeo.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));headGeo.setIndex(indices);headGeo.computeVertexNormals();const head=mesh(headGeo,skin);head.name='sculpted-human-head';
+  const iris=material(T,c.eyeColor||'#647e85','skin'),lip=material(T,'#8e5b4c','skin');
+  for(const side of [-1,1]){
+   ell(side*.191,2.83,-.01,.025,.056,.023,skin);line([[side*.198,2.87,.006],[side*.208,2.84,.016],[side*.2,2.8,.008]],.006,lip);
+   ell(side*.073,2.889,.154,.032,.014,.012,white);ell(side*.073,2.889,.165,.012,.012,.003,iris);ell(side*.073,2.889,.168,.006,.008,.002,dark);ell(side*.069,2.894,.17,.002,.002,.001,white);
+   line([[side*.04,2.889,.156],[side*.073,2.905,.165],[side*.106,2.89,.151]],.005,skin);line([[side*.04,2.885,.156],[side*.073,2.877,.165],[side*.106,2.887,.151]],.004,skin);
+   line([[side*.033,2.926,.17],[side*.073,2.934,.179],[side*.117,2.924,.153]],.007,hair);
+   line([[side*.08,2.83,.16],[side*.13,2.81,.152],[side*.15,2.76,.124]],.003,skin);
+  }
+  ell(0,2.862,.171,.018,.057,.029,skin);ell(0,2.817,.198,.024,.018,.023,skin);for(const side of [-1,1]){ell(side*.024,2.812,.181,.014,.014,.018,skin);ell(side*.02,2.804,.193,.007,.004,.004,lip);}
+  line([[-.044,2.754,.143],[-.014,2.758,.155],[0,2.754,.159],[.014,2.758,.155],[.044,2.754,.143]],.0045,lip);line([[-.038,2.747,.145],[0,2.742,.163],[.038,2.747,.145]],.006,lip);
+  shell(0,2.98,-.025,.198,.158,.184,hair);
+  for(let i=0;i<21;i++){const x=(i-10)*.014;line([[x,3.025,.14-Math.abs(x)*.2],[x*.8-.025,3.125,.035],[x*.7-.035,3.085,-.115]],.006,hair);}
+  for(const side of [-1,1]){const tendon=ell(side*.078,2.5,.035,.028,.12,.035,skin);tendon.rotation.z=side*-.28;}
   // Anatomical limbs, fitted sleeves and gloves; no oversized floating pauldrons.
   for(const s of [-1,1]){
    const start=figure.children.length;
    const thigh=ell(s*.18,1.13,0,.17,.43,.175,fabric);thigh.rotation.z=s*.035;
    ell(s*.195,.76,.035,.127,.13,.13,leather);ell(s*.2,.43,0,.115,.31,.12,type==='plate'?metal:leather);
    ell(s*.2,.095,.075,.13,.1,.23,leather);
-   const shoulder=ell(s*.43,2.3,0,.16,.18,.165,fabric);
-   const upper=ell(s*.51,2.06,0,.12,.28,.125,fabric);upper.rotation.z=s*.13;
-   ell(s*.555,1.82,0,.105,.1,.115,leather);
-   ell(s*.58,1.6,.025,.095,.22,.105,type==='plate'?metal:fabric);
+   const bare=region==='greece'||region==='egypt',armSkin=bare?skin:fabric;const shoulder=ell(s*.43,2.3,0,.16,.18,.165,armSkin);
+   const upper=ell(s*.51,2.06,0,.12,.28,.125,armSkin);upper.rotation.z=s*.13;
+   ell(s*.555,1.82,0,.09,.1,.1,bare?skin:leather);if(bare){ell(s*.51,2.08,.06,.10,.19,.10,skin);ell(s*.51,2.09,-.065,.10,.2,.09,skin);}
+   ell(s*.58,1.6,.025,.095,.22,.105,type==='plate'?metal:bare?skin:fabric);
    ell(s*.6,1.36,.045,.062,.077,.045,skin);for(let f=0;f<4;f++)ell(s*.6+(f-1.5)*.023,1.275-Math.sin(f/3*Math.PI)*.012,.055,.013,.055,.018,skin);ell(s*.66,1.34,.075,.025,.045,.025,skin);
-   for(let k=0;k<3;k++)cyl(s*.58,1.45+k*.08,.025,.105,.105,.025,trim);
+   for(let k=0;k<2;k++)cyl(s*.58,1.45+k*.08,.025,.105,.105,.025,trim);
    for(const o of figure.children.slice(start)){const y=o.position.y;attachParts([o],y<.9?rigs[s].knee:y<1.5&&Math.abs(o.position.x)<.4?rigs[s].leg:y<1.9?rigs[s].elbow:rigs[s].arm);}
 
   }
@@ -151,6 +164,7 @@
    for(let j=-3;j<=3;j++)line([[j*.09,1.61,.24],[j*.11,2,.28],[j*.1,2.3,.22]],.007,type==='brigandine'?trim:leather);
    if(type==='brigandine')for(let y=1.65;y<2.3;y+=.11)for(let x=-.3;x<=.3;x+=.1)ell(x,y,.27,.014,.014,.012,trim);
   }
+  for(const side of [-1,1])for(let i=0;i<6;i++)ell(side*(.30+i*.004),1.7+i*.1,.21,.012,.012,.012,trim);
   const belt=cyl(0,1.5,0,.34,.34,.09,leather);belt.scale.z=.7;box(0,1.5,.249,.105,.075,.025,trim);
   // Region-specific skirts and shoulder construction.
   const skirtRows=region==='japan'?5:region==='china'?3:1;

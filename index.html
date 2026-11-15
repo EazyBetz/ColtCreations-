@@ -11,7 +11,7 @@
 #battle .hudtop{background:#100d1bb5;border:1px solid #a48a5e88;border-radius:9px;padding:5px 9px}
 #battle:before{content:'WITCHWOOD · DIVINE REBIRTH';position:absolute;top:5px;left:50%;transform:translateX(-50%);font:700 12px Georgia;color:#f0d3a0;letter-spacing:.15em;z-index:2;pointer-events:none;text-shadow:0 2px 5px #000}
 @media(max-width:700px){#battle:before{font-size:9px;top:3px}.hudtop{top:5px;left:5px}.minimap{width:84px;height:84px}}
-#gf29ShopPanel{position:absolute;inset:7% 5%;z-index:120;background:linear-gradient(145deg,#141a22f5,#211b2cf8);border:1px solid #d5b779;border-radius:14px;padding:14px;color:#f3e7d0;overflow:auto;box-shadow:0 10px 40px #000d;touch-action:pan-y}#gf29ShopPanel[hidden]{display:none}#gf29ShopPanel h2{margin:0 0 6px;font-size:20px}#gf29ShopPanel .gf29-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#gf29ShopPanel .gf29-item{background:#25283b;border:1px solid #77694e;padding:10px;border-radius:9px;min-height:100px}#gf29ShopPanel .gf29-item b{display:block;color:#e6c984}#gf29ShopPanel .gf29-item small{display:block;min-height:32px}#gf29ShopPanel button{padding:7px;margin-top:5px;font-size:12px}#s4{border-color:#75d6bf;background:linear-gradient(130deg,#16473e,#202c46)}@media(max-width:680px){#gf29ShopPanel .gf29-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#gf29ShopPanel{inset:4% 3%}} </style><link rel="stylesheet" href="heritage.css?v=56"></head><body>
+#gf29ShopPanel{position:absolute;inset:7% 5%;z-index:120;background:linear-gradient(145deg,#141a22f5,#211b2cf8);border:1px solid #d5b779;border-radius:14px;padding:14px;color:#f3e7d0;overflow:auto;box-shadow:0 10px 40px #000d;touch-action:pan-y}#gf29ShopPanel[hidden]{display:none}#gf29ShopPanel h2{margin:0 0 6px;font-size:20px}#gf29ShopPanel .gf29-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#gf29ShopPanel .gf29-item{background:#25283b;border:1px solid #77694e;padding:10px;border-radius:9px;min-height:100px}#gf29ShopPanel .gf29-item b{display:block;color:#e6c984}#gf29ShopPanel .gf29-item small{display:block;min-height:32px}#gf29ShopPanel button{padding:7px;margin-top:5px;font-size:12px}#s4{border-color:#75d6bf;background:linear-gradient(130deg,#16473e,#202c46)}@media(max-width:680px){#gf29ShopPanel .gf29-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#gf29ShopPanel{inset:4% 3%}} </style><link rel="stylesheet" href="heritage.css?v=57"></head><body>
 <section id="home" class="screen active">
 <div class="gf43-stage">
 <img class="gf43-art" src="godforged-home-screen.jpg" alt="Godforged: a lightning-wielding god faces an armored fire god before a towering castle" fetchpriority="high" draggable="false">
@@ -153,12 +153,12 @@ const cv=renderer.domElement;cv.addEventListener('pointerdown',e=>{drag=true;px=
 function loadModel(){status.textContent='Loading '+select.options[select.selectedIndex].text+'…';return new Promise((resolve,reject)=>loader.load('models/'+select.value+'.glb',g=>{if(model)scene.remove(model);model=g.scene;model.rotation.y=rot;scene.add(model);status.textContent=select.options[select.selectedIndex].text+' · 3D prototype mesh (not yet animated in battle)';resolve()},undefined,reject))}
 select.addEventListener('change',()=>{if(initialized)loadModel().catch(e=>status.textContent='Model failed to load: '+e.message)});
 </script>
-<script src="phase22-style.js?v=56"></script>
-<script src="god-appearance.js?v=56"></script>
-<script src="heritage.js?v=56"></script>
-<script src="heritage-software.js?v=56"></script>
-<script src="regional-abilities.js?v=56"></script>
-<script type="module" src="heritage-viewer.js?v=56"></script>
+<script src="phase22-style.js?v=57"></script>
+<script src="god-appearance.js?v=57"></script>
+<script src="heritage.js?v=57"></script>
+<script src="heritage-software.js?v=57"></script>
+<script src="regional-abilities.js?v=57"></script>
+<script type="module" src="heritage-viewer.js?v=57"></script>
 <script>
 // Phase 34: prevent double-tap browser zoom without suppressing fast game controls.
 (function(){
@@ -178,9 +178,9 @@ select.addEventListener('change',()=>{if(initialized)loadModel().catch(e=>status
 <style>
 #battle,#battle canvas,#battle button,#joy,#nub,#attack,#s1,#s2,#s3,#s4 {touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 </style>
-<script src="world-enhancements.js?v=56"></script>
-<script src="spell-art.js?v=56"></script><script src="combat-overhaul.js?v=56"></script>
-<script src="match-progression.js?v=56"></script><script src="phase21.js?v=56"></script>
+<script src="world-enhancements.js?v=57"></script>
+<script src="spell-art.js?v=57"></script><script src="combat-overhaul.js?v=57"></script>
+<script src="match-progression.js?v=57"></script><script src="phase21.js?v=57"></script>
 
 <style>
 #home{background:linear-gradient(105deg,#070b18f5 0%,#0b1225c9 45%,#090b1a4f 100%),url('lobby.png') center/cover}
@@ -342,5 +342,5 @@ select.addEventListener('change',()=>{if(initialized)loadModel().catch(e=>status
  by('gf43-daily').onclick=()=>notice('Daily rewards are not available yet. Levels, balances and online counts in this artwork are decorative.');
  by('gf43-exit').onclick=()=>notice('To exit Godforged, close this browser tab or return to your home screen. Your saved god stays on this device.');
 })();
-</script><link rel="stylesheet" href="social.css?v=56"><script src="social.js?v=56"></script>
-<div id="empire-label" style="position:fixed;bottom:5px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:90;color:#eee4bd;background:#143f49d9;padding:5px 18px;border-radius:20px;font:600 12px system-ui;letter-spacing:2px">SUNKEN EMPIRE</div><link rel="stylesheet" href="lobby-live.css?v=56"><script src="lobby-live.js?v=56"></script></body></html>
+</script><link rel="stylesheet" href="social.css?v=57"><script src="social.js?v=57"></script>
+<div id="empire-label" style="position:fixed;bottom:5px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:90;color:#eee4bd;background:#143f49d9;padding:5px 18px;border-radius:20px;font:600 12px system-ui;letter-spacing:2px">SUNKEN EMPIRE</div><link rel="stylesheet" href="lobby-live.css?v=57"><script src="lobby-live.js?v=57"></script></body></html>
