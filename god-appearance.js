@@ -22,6 +22,64 @@
   const shell=(x,y,z,rx,ry,rz,m,start=0,length=Math.PI*2,p=root)=>{const o=mesh(new T.SphereGeometry(1,32,20,start,length,0,Math.PI*.62),m,x,y,z,p);o.scale.set(rx,ry,rz);return o};
   return {mesh,ell,box,cyl,line,shell};
  }
+ // Sode built across the shoulder, with depth shaped independently at both rims.
+ function buildOyoroiGuard(T, side, tools, materials) {
+  const {mesh, line} = tools;
+  const {metal, fabric, trim} = materials;
+  const sections = 10;
+  function surface(row, u, down, offset = 0) {
+   const angle = u * 1.34;
+   const flare = .016 * row + .030 * down;
+   return new T.Vector3(
+    side * (.406 + (.236 + flare + offset) * Math.cos(angle)),
+    2.436 - .084 * row - .104 * down - .055 * u * u,
+    (.226 + row * .010) * Math.sin(angle)
+   );
+  }
+  for (let row = 0; row < 5; row++) {
+   // The folded lower lip casts a narrow shadow over the following plate.
+   const profile = [[0,-.018],[0,0],[.72,.007],[.93,.015],[1,.006],[1,-.018]];
+   const verts = [], uv = [], indices = [];
+   const stride = profile.length;
+   function triangle(a,b,c) { indices.push(...(side === 1 ? [a,b,c] : [a,c,b])); }
+   for (let i = 0; i <= sections; i++) {
+    const u = 2 * i / sections - 1;
+    for (const [down,offset] of profile) {
+     verts.push(...surface(row,u,down,offset).toArray());
+     uv.push(i / sections, down);
+    }
+   }
+   for (let i = 0; i < sections; i++) {
+    for (let k = 0; k < stride; k++) {
+     const a = i * stride + k, b = i * stride + (k + 1) % stride;
+     triangle(a,a+stride,b); triangle(a+stride,b+stride,b);
+    }
+   }
+   for (let k = 1; k < stride-1; k++) {
+    triangle(0,k,k+1);
+    const end = sections * stride;
+    triangle(end,end+k+1,end+k);
+   }
+   const g = new T.BufferGeometry();
+   g.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+   g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
+   g.setIndex(indices);
+   g.computeVertexNormals();
+   mesh(g,metal).name = 'sode-plate-'+row;
+   // Short pairs of cord disappear back through the lacquer on either end.
+   for (const u of [-.83,-.32,.32,.83]) {
+    const points = [[u-.06,.05,-.007],[u-.015,.34,.017],[u+.04,.72,.020],[u+.07,.94,0]];
+    const path = new T.CatmullRomCurve3(points.map(([x,y,d])=>surface(row,x,y,d)));
+    mesh(new T.TubeGeometry(path,4,.012,4,false),fabric);
+   }
+  }
+  for (const z of [-.118,.118]) {
+   line([[side*.285,2.406,z],[side*.395,2.476,z],[side*.505,2.472,z],[side*.606,2.421,z]],.026,fabric);
+  }
+  const binding = [];
+  for(let i=0;i<=8;i++)binding.push(surface(0,i/4-1,.06,.006).toArray());
+  line(binding,.011,trim);
+ }
  window.GFBuildHeritageWeapon=function(T,c){
   const group=new T.Group(),{weapon}=GFResolveHeritage(c),id=weapon[0];group.name='heritage-weapon-'+id;
   const {mesh,cyl,box,ell,line}=helpers(T,group),steel=material(T,c.heritage==='egypt'?'#bda064':'#c0c9ce','metal'),edge=material(T,'#e0e4df','metal'),trim=material(T,c.trimColor||'#a99160','metal'),leather=material(T,'#302821','cloth'),wood=material(T,'#62503b','cloth'),cloth=material(T,c.clothColor||'#762c25','cloth');
@@ -65,9 +123,34 @@
   const tuft=()=>{for(let i=0;i<9;i++)line([[0,3.2,0],[Math.sin(i)*.04,3.45,-.08],[Math.sin(i)*.06,3.24,-.32]],.014,crest);};
   if(region==='japan'){
    if(id==='jingasa'){mesh(new T.ConeGeometry(.42,.22,32),body,0,3.16,-.02);cheek();tuft();}
-   else{for(let i=0;i<4;i++)mesh(new T.CylinderGeometry(.23+i*.02,.26+i*.02,.06,24,1,true,Math.PI*.3,Math.PI*1.4),body,0,2.88-i*.065,-.02);ell(0,3.02,.18,.27,.025,.14,body);visor(id==='oni');
-    if(id==='oni'){for(const s of [-1,1]){line([[s*.12,3.13,0],[s*.3,3.33,-.06],[s*.28,3.54,-.12]],.035,crest);mesh(new T.ConeGeometry(.028,.12,8),face,s*.09,2.72,.32).rotation.z=s*.5;}}
-    else for(const s of [-1,1])line([[s*.02,3.14,.17],[s*.2,3.27,.15],[s*.28,3.5,.08]],.026,crest);
+   else{
+    for(let row=0;row<4;row++){
+     const openFace=id==='kabuto';
+     const radius=openFace?.234+row*.023:.23+row*.02;
+     const geometry=new T.CylinderGeometry(radius,radius+(openFace?.029:.03),openFace?.077:.06,24,1,true,Math.PI*(openFace?.26:.3),Math.PI*(openFace?1.48:1.4));
+     mesh(geometry,body,0,openFace?2.915-row*.062:2.88-row*.065,-.02);
+    }
+    ell(0,3.02,.18,.27,.025,.14,body);
+    if(id==='oni'){
+     visor(true);
+     for(const s of [-1,1]){line([[s*.12,3.13,0],[s*.3,3.33,-.06],[s*.28,3.54,-.12]],.035,crest);mesh(new T.ConeGeometry(.028,.12,8),face,s*.09,2.72,.32).rotation.z=s*.5;}
+    }else{
+     // A swept sheet seats in the brow mount. Its broad root tapers to two tips.
+     const crescent=new T.Shape();
+     crescent.moveTo(-.355,.295);
+     crescent.quadraticCurveTo(-.18,-.015,0,-.018);
+     crescent.quadraticCurveTo(.18,-.015,.355,.295);
+     crescent.quadraticCurveTo(.25,-.095,0,-.099);
+     crescent.quadraticCurveTo(-.25,-.095,-.355,.295);
+     const crestGeo=new T.ExtrudeGeometry(crescent,{depth:.018,bevelEnabled:true,bevelSize:.004,bevelThickness:.004,bevelSegments:1,curveSegments:10});
+     mesh(crestGeo,crest,0,3.16,.211).rotation.x=-.18;
+     box(0,3.072,.21,.078,.096,.055,face);
+     for(const side of [-1,1]){
+      const flap=box(side*.192,2.84,.075,.057,.198,.112,body);
+      flap.rotation.z=-side*.14;
+      line([[side*.19,2.81,.128],[side*.134,2.714,.135],[side*.034,2.652,.075]],.016,face);
+     }
+    }
    }
   }else if(region==='china'){
    cheek();if(id==='ming'){cyl(0,3.23,0,.018,.07,.18,body);tuft();}
@@ -151,7 +234,7 @@
   // Cuirass: curved strips wrap the body, with a slim edge at every seam.
   const bands=(rows,top,bottom,mat)=>{for(let i=0;i<rows;i++){const y=bottom+(top-bottom)*i/(rows-1);const radius=y>2.1?.42:y>1.8?.36:.33;const o=cyl(0,y,0,radius,radius*.98,(top-bottom)/rows*.88,mat);o.scale.z=.66;const edge=cyl(0,y+.024,0,radius+.006,radius+.006,.012,trim);edge.scale.z=.66;}};
   if(type==='lamellar'||type==='scale'){
-   for(let row=0;row<7;row++)for(let j=0;j<14;j++){const a=j/14*Math.PI*2+(row%2)*.11,y=1.65+row*.105,r=y>2.05?.424:.35;const o=box(Math.sin(a)*r,y,Math.cos(a)*r*.68,.13,.12,.035,metal);o.rotation.y=a;if(type==='scale'){o.geometry.dispose();o.geometry=new T.SphereGeometry(1,10,8);o.scale.set(.065,.076,.025)}if(j%2===0)ell(Math.sin(a)*(r+.022),y+.028,Math.cos(a)*(r*.68+.018),.012,.012,.01,trim)}
+   for(let row=0;row<7;row++)for(let j=0;j<14;j++){const a=j/14*Math.PI*2+(row%2)*.11,y=1.65+row*.105,r=y>2.05?.424:.35;const o=box(Math.sin(a)*r,y,Math.cos(a)*r*.68,.13,.12,.035,metal);o.rotation.y=a;if(type==='scale'){o.geometry.dispose();o.geometry=new T.SphereGeometry(1,10,8);o.scale.set(.065,.076,.025)}if(id==='oyoroi' && j%2===0){const pin=mesh(new T.SphereGeometry(1,6,4),trim,Math.sin(a)*(r+.022),y+.028,Math.cos(a)*(r*.68+.018));pin.scale.set(.012,.012,.01)}else if(j%2===0)ell(Math.sin(a)*(r+.022),y+.028,Math.cos(a)*(r*.68+.018),.012,.012,.01,trim)}
   }else if(type==='mail'){
    bands(10,2.32,1.5,metal);for(let row=0;row<15;row++)for(let j=0;j<13;j++){const a=-1.45+j*.24,r=row>9?.34:.42;const o=mesh(new T.TorusGeometry(.023,.005,3,7),metal,Math.sin(a)*r,2.3-row*.05,Math.cos(a)*r*.69);o.rotation.y=a}
   }else if(type==='plate'){
@@ -171,7 +254,12 @@
   for(let j=0;j<10;j++){const a=j*Math.PI/5;for(let row=0;row<skirtRows;row++){const r=.36+row*.02,y=1.35-row*.095;const o=box(Math.sin(a)*r,y,Math.cos(a)*r*.71,.2,skirtRows===1?.35:.1,.045,region==='greece'||region==='egypt'?fabric:armorMat);o.rotation.y=a;o.rotation.x=Math.cos(a)*-.1;}}
   for(const s of [-1,1]){
    const shoulderStart=figure.children.length;
-   if(region==='japan'||region==='china'){const broad=id==='oyoroi';for(let i=0;i<(broad?5:3);i++){const p=box(s*(.45+i*.012),2.4-i*.085,0,broad?.29:.22,.085,.35,metal);p.rotation.z=s*.12;for(let z=-.12;z<=.12;z+=.12)box(s*(.45+i*.012),2.42-i*.085,z,.04,.045,.025,fabric)}}
+   if(region==='japan' && id==='oyoroi'){
+    const guard=joint('suspended-sode-'+s,0,.11,0,rigs[s].arm);
+    rigs[s].guard=guard;
+    buildOyoroiGuard(T,s,{mesh,line},{metal,fabric,trim});
+    attachParts(figure.children.slice(shoulderStart),guard);
+   }else if(region==='japan'||region==='china'){for(let i=0;i<3;i++){const p=box(s*(.45+i*.012),2.4-i*.085,0,.22,.085,.35,metal);p.rotation.z=s*.12;for(let z=-.12;z<=.12;z+=.12)box(s*(.45+i*.012),2.42-i*.085,z,.04,.045,.025,fabric)}}
    else if(type==='plate'){for(let i=0;i<3;i++){const o=ell(s*(.42+i*.035),2.36-i*.07,0,.19,.1,.2,metal);o.rotation.z=s*-.18}}
    else if(region==='norse'&&id==='chieftain'){for(let j=0;j<13;j++)ell(s*(.25+j*.019),2.35+Math.sin(j)*.015,-.03,.1,.085,.12,material(T,j%2?'#716251':'#8a7b65','cloth'))}
    attachParts(figure.children.slice(shoulderStart),rigs[s].arm);
@@ -208,6 +296,11 @@ window.GFAnimateFigure=function(root,dt,{moving=0,backward=false,attack=0,airbor
    if(airborne){arm=-.6;elbow=-.5;}
    if(attack>0&&side===1){arm=-Math.sin(attack*Math.PI)*1.45;elbow=-.15-Math.sin(Math.min(1,attack*1.6)*Math.PI)*1.15;}
    j.arm.rotation.x+=(arm-j.arm.rotation.x)*blend;j.elbow.rotation.x+=(elbow-j.elbow.rotation.x)*blend;
+   if(j.guard){
+    // Lacing allows a little delayed travel while the shoulder carries the load.
+    const restAngle=-.22*j.arm.rotation.x;
+    j.guard.rotation.x+=(restAngle-j.guard.rotation.x)*(1-Math.exp(-dt*9));
+   }
    j.arm.rotation.z=side===1&&attack>0?-Math.sin(attack*Math.PI)*.35:0;
   }
  };
