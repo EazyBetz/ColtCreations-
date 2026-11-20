@@ -192,9 +192,41 @@
   const skin=material(T,c.skin||'#bd8565','skin'),hair=material(T,c.hairColor||'#30241f','cloth'),metal=material(T,c.armorColor||h.metal,'metal'),trim=material(T,c.trimColor||h.color,'metal'),fabric=material(T,c.clothColor||h.cloth,'cloth'),leather=material(T,'#302a25','cloth'),dark=material(T,'#141a1d','cloth'),white=material(T,'#dad5c8','skin');
   const armorMat=type==='cloth'||type==='brigandine'?fabric:metal;
   // Human proportions: 3.15 units, approximately seven and a half heads tall.
-  const torsoPoints=[[.28,1.44],[.32,1.58],[heavy?.43:.32,1.85],[female?.41:.44,2.13],[female?.4:.46,2.35],[.3,2.45]].map(([r,y])=>new T.Vector2(r,y));
-  const torso=mesh(new T.LatheGeometry(torsoPoints,36),fabric);torso.scale.z=.63;
-  cyl(0,2.51,0,.105,.13,.23,skin);
+  // Cross sections specify height, lateral center, forward center and the two radii.
+  // Off-center sections carry muscle mass behind the calf and ahead of the thigh.
+  function form(name, sections, mat, side=1, target=null) {
+   const positions=[], uv=[], indices=[], segments=20;
+   for(const [row,[y,x,z,w,d]] of sections.entries()){
+    for(let i=0;i<segments;i++){
+     const a=i*Math.PI*2/segments;
+     positions.push(side*x+w*Math.sin(a),y,z+d*Math.cos(a));
+     uv.push(i/segments,row/(sections.length-1));
+    }
+   }
+   for(let row=0;row<sections.length-1;row++)for(let i=0;i<segments;i++){
+    const a=row*segments+i,b=row*segments+(i+1)%segments;
+    indices.push(a,b,a+segments,b,b+segments,a+segments);
+   }
+   const last=(sections.length-1)*segments;
+   for(let i=1;i<segments-1;i++)indices.push(0,i+1,i,last,last+i,last+i+1);
+   const geo=new T.BufferGeometry();
+   geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));
+   geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
+   geo.setIndex(indices);geo.computeVertexNormals();
+   const part=mesh(geo,mat);part.name=name;
+   if(target)attachParts([part],target);
+   return part;
+  }
+  form('padded-doublet',[
+   [1.31,0,-.02,.26,.19],[1.44,0,-.025,.33,.228],[1.59,0,-.014,.32,.215],
+   [1.78,0,0,heavy?.37:.30,.215],[1.98,0,-.007,.365,.24],
+   [2.17,0,.004,female?.396:.423,.255],[2.30,0,-.012,.44,.238],
+   [2.37,0,-.02,.41,.205],[2.43,0,-.026,.31,.16],[2.49,0,-.023,.175,.12]
+  ],fabric);
+  form('fitted-collar',[[2.39,0,-.022,.256,.164],[2.46,0,-.021,.205,.15],
+   [2.51,0,-.015,.157,.13],[2.535,0,-.01,.148,.124]],leather);
+  form('nape',[[2.48,0,-.018,.136,.115],[2.54,0,-.016,.116,.098],
+   [2.615,0,-.01,.104,.096],[2.69,0,-.016,.119,.109]],skin);
   // Continuous head topology: shaped jaw, cheekbones, eye sockets and cranial dome.
   const rings=[[2.61,.055,.065],[2.66,.112,.105],[2.72,.148,.132],[2.79,.177,.16],[2.86,.19,.172],[2.94,.188,.172],[3.01,.173,.159],[3.08,.125,.117],[3.12,.02,.02]],positions=[],uvs=[],indices=[];
   const rows=40,segs=64;
@@ -218,23 +250,56 @@
   for(const side of [-1,1]){const tendon=ell(side*.078,2.5,.035,.028,.12,.035,skin);tendon.rotation.z=side*-.28;}
   // Anatomical limbs, fitted sleeves and gloves; no oversized floating pauldrons.
   for(const s of [-1,1]){
-   const start=figure.children.length;
-   const thigh=ell(s*.18,1.13,0,.17,.43,.175,fabric);thigh.rotation.z=s*.035;
-   ell(s*.195,.76,.035,.127,.13,.13,leather);ell(s*.2,.43,0,.115,.31,.12,type==='plate'?metal:leather);
-   ell(s*.2,.095,.075,.13,.1,.23,leather);
-   const bare=region==='greece'||region==='egypt',armSkin=bare?skin:fabric;const shoulder=ell(s*.43,2.3,0,.16,.18,.165,armSkin);
-   const upper=ell(s*.51,2.06,0,.12,.28,.125,armSkin);upper.rotation.z=s*.13;
-   ell(s*.555,1.82,0,.09,.1,.1,bare?skin:leather);if(bare){ell(s*.51,2.08,.06,.10,.19,.10,skin);ell(s*.51,2.09,-.065,.10,.2,.09,skin);}
-   ell(s*.58,1.6,.025,.095,.22,.105,type==='plate'?metal:bare?skin:fabric);
-   ell(s*.6,1.36,.045,.062,.077,.045,skin);for(let f=0;f<4;f++)ell(s*.6+(f-1.5)*.023,1.275-Math.sin(f/3*Math.PI)*.012,.055,.013,.055,.018,skin);ell(s*.66,1.34,.075,.025,.045,.025,skin);
-   for(let k=0;k<2;k++)cyl(s*.58,1.45+k*.08,.025,.105,.105,.025,trim);
-   for(const o of figure.children.slice(start)){const y=o.position.y;attachParts([o],y<.9?rigs[s].knee:y<1.5&&Math.abs(o.position.x)<.4?rigs[s].leg:y<1.9?rigs[s].elbow:rigs[s].arm);}
+   const {leg,knee,arm,elbow,hand}=rigs[s];
+   const bare=region==='greece'||region==='egypt',sleeve=bare?skin:fabric;
+   const width=muscle?1.10:heavy?1.08:1;
+   form('thigh',[[.716,.195,.021,.097,.105],[.79,.195,.028,.119,.134],
+    [.89,.19,.021,.128,.15],[1.05,.184,.013,.149*width,.173],
+    [1.23,.18,-.012,.172*width,.185],[1.39,.171,-.027,.17,.177],[1.51,.168,-.022,.141,.142]],fabric,s,leg);
+   form('calf-and-ankle',[[.108,.202,-.016,.079,.085],[.22,.202,-.025,.078,.09],
+    [.35,.205,-.034,.091,.111],[.50,.208,-.044,.125,.142],[.60,.201,-.032,.133,.137],
+    [.69,.197,.005,.112,.114],[.765,.195,.031,.112,.127],[.812,.195,.022,.096,.093]],leather,s,knee);
+   form('heeled-boot',[[.006,.201,.075,.119,.214],[.034,.201,.077,.124,.22],
+    [.065,.201,.071,.123,.218],[.094,.201,.053,.118,.202],[.127,.201,.016,.105,.154],
+    [.17,.201,-.018,.091,.112],[.213,.201,-.026,.082,.095]],leather,s,knee);
+   form('deltoid-to-elbow',[[1.774,.556,0,.075,.079],[1.854,.552,-.014,.088,.10],
+    [1.97,.53,-.012,.103*width,.121],[2.09,.51,.005,.127*width,.138],
+    [2.18,.481,-.003,.134*width,.141],[2.295,.443,-.008,.15*width,.156],
+    [2.372,.416,-.012,.128,.134],[2.425,.395,-.013,.055,.074]],sleeve,s,arm);
+   form('forearm',[[1.32,.60,.045,.056,.049],[1.397,.599,.041,.058,.058],
+    [1.50,.59,.034,.072,.083],[1.64,.576,.019,.097*width,.105],
+    [1.731,.561,.004,.097,.099],[1.818,.555,-.006,.084,.084],[1.86,.554,-.004,.064,.069]],type==='plate'?metal:sleeve,s,elbow);
+   form('bracer',[[1.415,.595,.04,.068,.069],[1.435,.594,.039,.071,.074],
+    [1.546,.586,.031,.088,.096],[1.578,.583,.027,.094,.10]],leather,s,elbow);
+   form('palm',[[1.265,.60,.056,.052,.038],[1.30,.60,.051,.069,.047],
+    [1.358,.599,.047,.064,.046],[1.402,.599,.042,.052,.045]],skin,s,hand);
+   const fingers=figure.children.length;
+   for(let f=0;f<4;f++){const x=s*(.554+f*.029),y=1.276+Math.abs(f-1)*.008;
+    line([[x,y,.053],[x,y-.04,.068],[x+s*.004,y-.049,.096],[x+s*.005,y-.029,.11]],.016,skin);}
+   line([[s*.548,1.345,.054],[s*.533,1.317,.087],[s*.548,1.295,.113]],.021,skin);
+   attachParts(figure.children.slice(fingers),hand);
 
   }
   // Cuirass: curved strips wrap the body, with a slim edge at every seam.
   const bands=(rows,top,bottom,mat)=>{for(let i=0;i<rows;i++){const y=bottom+(top-bottom)*i/(rows-1);const radius=y>2.1?.42:y>1.8?.36:.33;const o=cyl(0,y,0,radius,radius*.98,(top-bottom)/rows*.88,mat);o.scale.z=.66;const edge=cyl(0,y+.024,0,radius+.006,radius+.006,.012,trim);edge.scale.z=.66;}};
-  if(type==='lamellar'||type==='scale'){
-   for(let row=0;row<7;row++)for(let j=0;j<14;j++){const a=j/14*Math.PI*2+(row%2)*.11,y=1.65+row*.105,r=y>2.05?.424:.35;const o=box(Math.sin(a)*r,y,Math.cos(a)*r*.68,.13,.12,.035,metal);o.rotation.y=a;if(type==='scale'){o.geometry.dispose();o.geometry=new T.SphereGeometry(1,10,8);o.scale.set(.065,.076,.025)}if(id==='oyoroi' && j%2===0){const pin=mesh(new T.SphereGeometry(1,6,4),trim,Math.sin(a)*(r+.022),y+.028,Math.cos(a)*(r*.68+.018));pin.scale.set(.012,.012,.01)}else if(j%2===0)ell(Math.sin(a)*(r+.022),y+.028,Math.cos(a)*(r*.68+.018),.012,.012,.01,trim)}
+  if(id==='oyoroi'){
+   // Overlapping courses follow the same rib cage and waist as the padded body.
+   for(let row=0;row<8;row++){
+    const y=1.62+row*.098;
+    const radius=[.331,.326,.324,.349,.383,.416,.438,.446][row];
+    const depth=[.233,.234,.235,.245,.257,.271,.279,.275][row];
+    form('lacquer-course',[[y-.055,0,0,radius+.010,depth+.012],
+     [y-.043,0,0,radius+.016,depth+.015],[y+.034,0,0,radius+.006,depth+.006],
+     [y+.055,0,0,radius-.005,depth-.004]],metal);
+    for(let i=0;i<16;i++){
+     const angle=(i+.5)*Math.PI/8;
+     const pts=[[-.045,-.024],[0,.008],[.041,.043]].map(([a,h])=>new T.Vector3(
+      Math.sin(angle+a)*(radius+.015),y+h,Math.cos(angle+a)*(depth+.013)));
+     mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts),3,.011,4,false),fabric);
+    }
+   }
+  }else if(type==='lamellar'||type==='scale'){
+   for(let row=0;row<7;row++)for(let j=0;j<14;j++){const a=j/14*Math.PI*2+(row%2)*.11,y=1.65+row*.105,r=y>2.05?.424:.35;const o=box(Math.sin(a)*r,y,Math.cos(a)*r*.68,.13,.12,.035,metal);o.rotation.y=a;if(type==='scale'){o.geometry.dispose();o.geometry=new T.SphereGeometry(1,10,8);o.scale.set(.065,.076,.025)}if(j%2===0)ell(Math.sin(a)*(r+.022),y+.028,Math.cos(a)*(r*.68+.018),.012,.012,.01,trim)}
   }else if(type==='mail'){
    bands(10,2.32,1.5,metal);for(let row=0;row<15;row++)for(let j=0;j<13;j++){const a=-1.45+j*.24,r=row>9?.34:.42;const o=mesh(new T.TorusGeometry(.023,.005,3,7),metal,Math.sin(a)*r,2.3-row*.05,Math.cos(a)*r*.69);o.rotation.y=a}
   }else if(type==='plate'){
@@ -264,7 +329,22 @@
    else if(region==='norse'&&id==='chieftain'){for(let j=0;j<13;j++)ell(s*(.25+j*.019),2.35+Math.sin(j)*.015,-.03,.1,.085,.12,material(T,j%2?'#716251':'#8a7b65','cloth'))}
    attachParts(figure.children.slice(shoulderStart),rigs[s].arm);
    const greaveStart=figure.children.length;
-   if(['japan','greece','europe'].includes(region)){const o=ell(s*.2,.43,.075,.119,.26,.086,metal);line([[s*.2,.2,.15],[s*.2,.67,.15]],.01,trim)}
+   if(['japan','greece','europe'].includes(region)){
+    // Fold the greave around the shin, leaving the calf and ankle free to bend.
+    const verts=[],uv=[],idx=[];
+    const rows=[[.194,.077,.071],[.27,.091,.08],[.48,.124,.104],[.61,.138,.112],[.69,.122,.132]];
+    for(const [r,[y,w,d]] of rows.entries())for(let i=0;i<=10;i++){
+     const u=(i-5)/5,a=u*1.46;
+     const tip=r===4?.067*(1-Math.abs(u)):0;
+     verts.push(s*.2+w*Math.sin(a),y+tip,-.006+d*Math.cos(a)+.016*(1-Math.abs(u)));
+     uv.push(i/10,r/4);
+     if(r&&i){const n=r*11+i;idx.push(n-12,n-11,n-1,n-11,n,n-1);}
+    }
+    const g=new T.BufferGeometry();
+    g.setAttribute('position',new T.Float32BufferAttribute(verts,3));
+    g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
+    mesh(g,metal);
+   }
    attachParts(figure.children.slice(greaveStart),rigs[s].knee);
   }
   const shieldStart=figure.children.length;
